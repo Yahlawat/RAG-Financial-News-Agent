@@ -14,7 +14,7 @@ DOWNLOAD_DELAY = 2
 
 # Enable or disable downloader middlewares
 DOWNLOADER_MIDDLEWARES = {
-    "finnews_scraper.middlewares.FinnewsScraperDownloaderMiddleware": 543,
+    "finnews_scraper.middlewares.FinnewsDownloaderMiddleware": 543,
 }
 
 # Configure item pipelines

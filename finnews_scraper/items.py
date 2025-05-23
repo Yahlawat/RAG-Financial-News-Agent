@@ -1,12 +1,11 @@
 import scrapy
 
-class NewsItem(scrapy.Item):
+class NewsArticleItem(scrapy.Item):
+    ticker = scrapy.Field()
     title = scrapy.Field()
-    content = scrapy.Field()
+    summary = scrapy.Field()
     url = scrapy.Field()
     source = scrapy.Field()
     published_date = scrapy.Field()
-    author = scrapy.Field()
-    category = scrapy.Field()
-    tickers = scrapy.Field()  # Related stock tickers
-    sentiment = scrapy.Field()  # Optional: pre-computed sentiment 
+    scraped_at = scrapy.Field()
+    
