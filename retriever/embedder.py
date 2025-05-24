@@ -1,67 +1,41 @@
-from typing import List, Dict
+# retriever/embedder.py
+
+import json
 import os
 from sentence_transformers import SentenceTransformer
-import chromadb
-from chromadb.config import Settings
+import faiss
+import numpy as np
 
-class NewsEmbedder:
-    def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
-        self.model = SentenceTransformer(model_name)
-        self.client = chromadb.Client(Settings(
-            persist_directory="data/embeddings/chroma"
-        ))
-        self.collection = self.client.get_or_create_collection("financial_news")
-    
-    def create_embeddings(self, chunks: List[Dict]) -> None:
-        """
-        Create embeddings for text chunks and store them in ChromaDB.
-        
-        Args:
-            chunks: List of dictionaries containing text chunks and metadata
-        """
-        texts = [chunk["text"] for chunk in chunks]
-        metadatas = [chunk["metadata"] for chunk in chunks]
-        ids = [chunk["chunk_id"] for chunk in chunks]
-        
-        # Create embeddings
-        embeddings = self.model.encode(texts)
-        
-        # Store in ChromaDB
-        self.collection.add(
-            embeddings=embeddings.tolist(),
-            documents=texts,
-            metadatas=metadatas,
-            ids=ids
-        )
-    
-    def search_similar(self, query: str, n_results: int = 5) -> List[Dict]:
-        """
-        Search for similar chunks using a query.
-        
-        Args:
-            query: Search query
-            n_results: Number of results to return
-            
-        Returns:
-            List of dictionaries containing similar chunks and their metadata
-        """
-        # Create query embedding
-        query_embedding = self.model.encode(query)
-        
-        # Search in ChromaDB
-        results = self.collection.query(
-            query_embeddings=[query_embedding.tolist()],
-            n_results=n_results
-        )
-        
-        # Format results
-        similar_chunks = []
-        for i in range(len(results["documents"][0])):
-            chunk = {
-                "text": results["documents"][0][i],
-                "metadata": results["metadatas"][0][i],
-                "distance": results["distances"][0][i]
-            }
-            similar_chunks.append(chunk)
-            
-        return similar_chunks 
+def build_faiss_index(input_dir: str, output_path: str, model_name: str = "all-MiniLM-L6-v2"):
+    model = SentenceTransformer(model_name)
+    index = faiss.IndexFlatL2(384)  # for MiniLM output dim
+
+    metadata = []
+    all_embeddings = []
+
+    for filename in os.listdir(input_dir):
+        with open(os.path.join(input_dir, filename), 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            chunks = data["chunks"]
+            embeddings = model.encode(chunks)
+
+            all_embeddings.append(embeddings)
+            metadata.extend([{
+                "ticker": data["ticker"],
+                "title": data["title"],
+                "chunk": chunk
+            } for chunk in chunks])
+
+    vectors = np.vstack(all_embeddings)
+    index.add(vectors)
+
+    # Save FAISS index
+    faiss.write_index(index, os.path.join(output_path, "news_index.faiss"))
+
+    # Save metadata
+    with open(os.path.join(output_path, "metadata.json"), "w") as f:
+        json.dump(metadata, f, indent=2)
+
+if __name__ == "__main__":
+    os.makedirs("data/embeddings", exist_ok=True)
+    build_faiss_index("data/processed_chunks", "data/embeddings")

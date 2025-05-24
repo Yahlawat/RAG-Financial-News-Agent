@@ -1,7 +1,9 @@
 # Virtual Environment
 .venv/
 venv/
-ENV/
 
 # Drafts
-Drafts/ 
+drafts/ 
+
+# Logs
+logs/
