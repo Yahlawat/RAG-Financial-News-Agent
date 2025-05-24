@@ -8,7 +8,7 @@ numpy>=1.24.0
 # Vector Store and Embeddings
 
 # LLM and RAG
-
+langchain>=0.3.25   
 
 # Web Interface
 
