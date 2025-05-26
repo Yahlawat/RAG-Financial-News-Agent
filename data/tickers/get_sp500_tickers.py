@@ -7,7 +7,7 @@ def get_sp500_tickers():
     url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
     tables = pd.read_html(url)
     df = tables[0]
-    tickers = df['Symbol'].tolist()[:1]  #! Limit for testing
+    tickers = df['Symbol'].tolist()
     return tickers
 
 if __name__ == "__main__":

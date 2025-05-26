@@ -1,6 +1,6 @@
 # main.py
 import subprocess
-from data_sources.get_sp500_tickers import get_sp500_tickers
+from data.tickers.get_sp500_tickers import get_sp500_tickers
 
 def run_ticker_scraper():
     tickers = get_sp500_tickers()

@@ -1,9 +1,35 @@
-# Virtual Environment
+# Virtual Environments
 .venv/
 venv/
 
-# Drafts
-drafts/ 
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
 
-# Logs
+# Logs and Debug
 logs/
+*.log
+
+# Data & Index Files
+data/chroma_store/
+data/embeddings/
+data/processed_chunks/chunked_articles.jsonl
+
+# Drafts & Notes
+drafts/
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# VSCode / IDE
+.vscode/
+.idea/
+
+# Environment Files
+.env
+.env.*
+
+# Git
+.gitignore
