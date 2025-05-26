@@ -26,7 +26,7 @@ RETRY_HTTP_CODES = [500, 502, 503, 504, 522, 524, 408]
 
 # Pipeline for saving articles
 ITEM_PIPELINES = {
-    "finnews_scraper.pipelines.SaveToTickerJsonPipeline": 300,
+    'finnews_scraper.pipelines.SaveNewsJSONLPipeline': 300,
 }
 
 # Compatibility settings

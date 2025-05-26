@@ -1,41 +1,40 @@
 # retriever/embedder.py
-
-import json
 import os
-from sentence_transformers import SentenceTransformer
-import faiss
-import numpy as np
+import json
+from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain.schema import Document
 
-def build_faiss_index(input_dir: str, output_path: str, model_name: str = "all-MiniLM-L6-v2"):
-    model = SentenceTransformer(model_name)
-    index = faiss.IndexFlatL2(384)  # for MiniLM output dim
+def load_chunks_from_file(file_path: str):
+    documents = []
+    with open(file_path, "r", encoding="utf-8") as f:
+        for line in f:
+            item = json.loads(line)
+            chunks = item["content"]
+            for i, chunk in enumerate(chunks):
+                metadata = {
+                    "title": item.get("title", ""),
+                    "url": item.get("url", ""),
+                    "relevant_tickers": ", ".join(item.get("relevant_tickers", [])),
+                    "published_date": item.get("published_date", ""),
+                    "chunk_index": i,
+                }
+                documents.append(Document(page_content=chunk, metadata=metadata))
+    return documents
 
-    metadata = []
-    all_embeddings = []
+def build_chroma_index(input_file: str, output_path: str, model_name: str = "BAAI/bge-base-en-v1.5"):
+    embedding_model = HuggingFaceEmbeddings(model_name=model_name)
+    documents = load_chunks_from_file(input_file)
+    os.makedirs(output_path, exist_ok=True)
 
-    for filename in os.listdir(input_dir):
-        with open(os.path.join(input_dir, filename), 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            chunks = data["chunks"]
-            embeddings = model.encode(chunks)
+    vectorstore = Chroma.from_documents(
+        documents=documents,
+        embedding=embedding_model,
+        persist_directory=output_path
+    )
+    vectorstore.persist()
+    return vectorstore
 
-            all_embeddings.append(embeddings)
-            metadata.extend([{
-                "ticker": data["ticker"],
-                "title": data["title"],
-                "chunk": chunk
-            } for chunk in chunks])
-
-    vectors = np.vstack(all_embeddings)
-    index.add(vectors)
-
-    # Save FAISS index
-    faiss.write_index(index, os.path.join(output_path, "news_index.faiss"))
-
-    # Save metadata
-    with open(os.path.join(output_path, "metadata.json"), "w") as f:
-        json.dump(metadata, f, indent=2)
 
 if __name__ == "__main__":
-    os.makedirs("data/embeddings", exist_ok=True)
-    build_faiss_index("data/processed_chunks", "data/embeddings")
+    build_chroma_index("data/processed_chunks/chunked_articles.jsonl", "data/chroma_store")

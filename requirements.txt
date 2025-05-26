@@ -5,15 +5,22 @@ scrapy>=2.11.0
 pandas>=2.0.0
 numpy>=1.24.0
 
-# Vector Store and Embeddings
+# Embeddings, Vector Store, and Chunking
+langchain>=0.3.25
+langchain-community>=0.0.14
+sentence-transformers>=2.2.2
+chromadb>=0.4.244
 
-# LLM and RAG
-langchain>=0.3.25   
+# LLM and Retrieval-Augmented Generation (RAG)
 
-# Web Interface
+# Web Interface (Optional)
+streamlit>=1.25.0
+gradio>=3.45.0
 
-# API
+# API (Optional)
+fastapi>=0.110.0
+uvicorn>=0.23.0
+requests>=2.31.0
 
-
-# Development
+# Development Tools
 ipython>=9.2.0
