@@ -1,8 +1,8 @@
 # retriever/embedder.py
 import os
 import json
-from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.schema import Document
 
 def load_chunks_from_file(file_path: str):
@@ -34,7 +34,6 @@ def build_chroma_index(input_file: str, output_path: str, model_name: str = "BAA
     )
     vectorstore.persist()
     return vectorstore
-
 
 if __name__ == "__main__":
     build_chroma_index("data/processed_chunks/chunked_articles.jsonl", "data/chroma_store")

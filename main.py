@@ -1,23 +1,20 @@
 # main.py
-import subprocess
-from data.tickers.get_sp500_tickers import get_sp500_tickers
+from rag_pipeline.rag_chain import FinancialNewsRAG
 
-def run_ticker_scraper():
-    tickers = get_sp500_tickers()
-    print(f"✅ Retrieved {len(tickers)} S&P 500 tickers.")
+def main():
+    print("Financial News RAG Assistant")
+    rag = FinancialNewsRAG()
 
-# def run_scrapy_crawler():
-#     print("🚀 Running news scraper...")
-#     subprocess.run(["scrapy", "crawl", "yahoo_spider"], cwd="scraper/financial_news_scraper")
+    while True:
+        question = input("\nComment on Nvida's recent performance. what is there to look forward to?")
+        if question.lower() == "exit":
+            break
 
-# def run_vector_build():
-#     print("🔧 Building vector database...")
-#     build_vectorstore()
-
-# def ask_sample_question():
-#     print("❓ Asking a test question...")
-#     response = ask_question("What is the outlook for Apple?")
-#     print("💬", response)
+        result = rag.answer_question(question)
+        print("\nAnswer:", result["answer"])
+        print("\nSources:")
+        for src in result["sources"]:
+            print(f"- {src['metadata'].get('title', '')} | {src['metadata'].get('url', '')}")
 
 if __name__ == "__main__":
-    run_ticker_scraper()
+    main()
