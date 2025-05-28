@@ -1,56 +1,68 @@
-from typing import List, Dict
-from langchain.chains import RetrievalQA
-from langchain.llms import OpenAI
-from langchain.prompts import PromptTemplate
-from retriever.embedder import NewsEmbedder
+from typing import Dict
+from langchain_core.prompts import PromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings, HuggingFacePipeline
+from transformers.pipelines import pipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 class FinancialNewsRAG:
-    def __init__(self, openai_api_key: str):
-        self.embedder = NewsEmbedder()
-        self.llm = OpenAI(temperature=0, openai_api_key=openai_api_key)
-        
-        # Custom prompt template for financial news QA
-        self.prompt_template = PromptTemplate(
-            template="""You are a financial news expert assistant. Use the following pieces of context to answer the question at the end.
-            If you don't know the answer, just say that you don't know, don't try to make up an answer.
+    def __init__(
+        self,
+        chroma_path: str = "data/chroma_store",
+        embedding_model: str = "BAAI/bge-base-en-v1.5",
+        llm_model: str = "tiiuae/falcon-rw-1b",
+        top_k: int = 5,
+        offline: bool = True
+    ):
+        embedding = HuggingFaceEmbeddings(model_name=embedding_model)
+        self.vectorstore = Chroma(persist_directory=chroma_path, embedding_function=embedding)
+        self.retriever = self.vectorstore.as_retriever(search_kwargs={"k": top_k})
+
+        if offline:
+            model = AutoModelForCausalLM.from_pretrained(llm_model, local_files_only=True)
+            tokenizer = AutoTokenizer.from_pretrained(llm_model, local_files_only=True)
+        else:
+            model = AutoModelForCausalLM.from_pretrained(llm_model)
+            tokenizer = AutoTokenizer.from_pretrained(llm_model)
+
+        hf_pipeline = pipeline(
+            task="text-generation",
+            model=model,
+            tokenizer=tokenizer,
+            max_new_tokens=512,
+            do_sample=False,
+            temperature=0  # Optional: you may remove if it's being ignored
+        )
+
+        self.llm = HuggingFacePipeline(pipeline=hf_pipeline)
+
+        self.prompt_template = PromptTemplate.from_template(
+            """You are a financial news expert assistant. Use the following context to answer the question.
             
             Context:
             {context}
             
             Question: {question}
             
-            Answer:""",
-            input_variables=["context", "question"]
+            Answer:"""
         )
-        
-        # Initialize the QA chain
-        self.qa_chain = RetrievalQA.from_chain_type(
-            llm=self.llm,
-            chain_type="stuff",
-            retriever=self.embedder.collection.as_retriever(),
-            return_source_documents=True,
-            chain_type_kwargs={"prompt": self.prompt_template}
+
+        self.chain = (
+            {"context": self.retriever, "question": RunnablePassthrough()}
+            | self.prompt_template
+            | self.llm
         )
-    
+
     def answer_question(self, question: str) -> Dict:
-        """
-        Answer a question using the RAG pipeline.
-        
-        Args:
-            question: The question to answer
-            
-        Returns:
-            Dictionary containing the answer and source documents
-        """
-        result = self.qa_chain({"query": question})
-        
+        docs = self.retriever.invoke(question)
+        context = "\n\n".join(doc.page_content for doc in docs)
+        prompt = self.prompt_template.format(context=context, question=question)
+        answer = self.llm.invoke(prompt)
         return {
-            "answer": result["result"],
+            "answer": answer,
             "sources": [
-                {
-                    "text": doc.page_content,
-                    "metadata": doc.metadata
-                }
-                for doc in result["source_documents"]
+                {"text": doc.page_content, "metadata": doc.metadata}
+                for doc in docs
             ]
-        } 
+        }
