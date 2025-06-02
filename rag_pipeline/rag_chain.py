@@ -1,68 +1,73 @@
-from typing import Dict
+import os
+
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
-from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings, HuggingFacePipeline
-from transformers.pipelines import pipeline
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from langchain_community.llms import Ollama
 
-class FinancialNewsRAG:
-    def __init__(
-        self,
-        chroma_path: str = "data/chroma_store",
-        embedding_model: str = "BAAI/bge-base-en-v1.5",
-        llm_model: str = "tiiuae/falcon-rw-1b",
-        top_k: int = 5,
-        offline: bool = True
-    ):
-        embedding = HuggingFaceEmbeddings(model_name=embedding_model)
-        self.vectorstore = Chroma(persist_directory=chroma_path, embedding_function=embedding)
-        self.retriever = self.vectorstore.as_retriever(search_kwargs={"k": top_k})
+from retriever import load_vectorstore, chunk_retriever
 
-        if offline:
-            model = AutoModelForCausalLM.from_pretrained(llm_model, local_files_only=True)
-            tokenizer = AutoTokenizer.from_pretrained(llm_model, local_files_only=True)
-        else:
-            model = AutoModelForCausalLM.from_pretrained(llm_model)
-            tokenizer = AutoTokenizer.from_pretrained(llm_model)
 
-        hf_pipeline = pipeline(
-            task="text-generation",
-            model=model,
-            tokenizer=tokenizer,
-            max_new_tokens=512,
-            do_sample=False,
-            temperature=0  # Optional: you may remove if it's being ignored
-        )
+def format_docs(docs: list) -> str:
+    return "\n\n".join(doc.page_content for doc in docs)
 
-        self.llm = HuggingFacePipeline(pipeline=hf_pipeline)
 
-        self.prompt_template = PromptTemplate.from_template(
-            """You are a financial news expert assistant. Use the following context to answer the question.
-            
-            Context:
-            {context}
-            
-            Question: {question}
-            
-            Answer:"""
-        )
+def rag_chain(question: str, top_k: int = 5) -> dict:
+    vectorstore_path = "data/chroma_store"
+    vectorstore = load_vectorstore(vectorstore_path)
 
-        self.chain = (
-            {"context": self.retriever, "question": RunnablePassthrough()}
-            | self.prompt_template
-            | self.llm
-        )
+    def retrieve_context(query: str) -> str:
+        relevant_docs = chunk_retriever(vectorstore, query=query, k=top_k)
+        return format_docs(relevant_docs)
 
-    def answer_question(self, question: str) -> Dict:
-        docs = self.retriever.invoke(question)
-        context = "\n\n".join(doc.page_content for doc in docs)
-        prompt = self.prompt_template.format(context=context, question=question)
-        answer = self.llm.invoke(prompt)
-        return {
-            "answer": answer,
-            "sources": [
-                {"text": doc.page_content, "metadata": doc.metadata}
-                for doc in docs
-            ]
+    prompt_template = PromptTemplate.from_template(
+        """You are a financial news expert assistant. Use the following context to answer the question.
+
+        Context:
+        {context}
+
+        Question: {question}
+
+        Answer:"""
+    )
+
+    llm = Ollama(
+        model="llama3.2:3b", 
+        temperature=0.0,
+        system="You are a helpful assistant for financial news question answering."
+    )
+
+    chain = (
+        {
+            "context": RunnablePassthrough() | (lambda q_for_context: retrieve_context(q_for_context)),
+            "question": RunnablePassthrough(),
         }
+        | prompt_template
+        | llm
+    )
+
+    answer_output = chain.invoke(question)
+
+    source_docs = chunk_retriever(vectorstore, query=question, k=top_k)
+    sources = [{"text": doc.page_content, "metadata": doc.metadata} for doc in source_docs]
+
+    return {
+        "answer": answer_output.strip(),
+        "sources": sources
+    }
+
+
+# Example usage
+if __name__ == "__main__":
+    question = "How is Amazon doing in the current market?"
+    try:
+        result = rag_chain(question=question, top_k=5)
+
+        print("## AI Generated Answer:")
+        print(result["answer"])
+        print("\n## Sources:")
+        for i, source_doc in enumerate(result["sources"]):
+            print(f"\n### Source {i+1}:")
+            print(f"Text: \"{source_doc['text'][:200]}...\"")
+            print(f"Metadata: {source_doc['metadata']}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
