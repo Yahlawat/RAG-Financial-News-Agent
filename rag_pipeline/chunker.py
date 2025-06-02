@@ -2,19 +2,27 @@ import os
 import json
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
-from typing import List
+import re
+import unicodedata
 
-def get_text_splitter(max_tokens=400):
-    return RecursiveCharacterTextSplitter(
-        chunk_size=max_tokens * 4,      # Assuming approximate 4 characters per token for English text
+def clean_chunk(text: str) -> str:
+    text = unicodedata.normalize("NFKD", text)
+    text = re.sub(r'[\x00-\x1F\x7F]', '', text)
+    text = text.replace("“", '"').replace("”", '"').replace("’", "'")
+    text = text.strip()
+    text = re.sub(r'\s+', ' ', text)
+
+    return text
+
+def chunk_articles(articles: list[dict], max_characters=1000) -> list[Document]:
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=max_characters,
         chunk_overlap=400,
         separators=["\n\n", "\n", ". ", "! ", "? ", " ", ""]
     )
-
-def chunk_articles(articles: List[dict], max_tokens=500) -> List[Document]:
-    splitter = get_text_splitter(max_tokens=max_tokens)
+    
     docs = []
-
+    
     for article in articles:
         body = article.get("body", "")
         if not body.strip():
@@ -27,6 +35,7 @@ def chunk_articles(articles: List[dict], max_tokens=500) -> List[Document]:
             "published_date": article.get("published_date"),
         }
 
+        body = clean_chunk(body)
         chunks = splitter.create_documents([body], metadatas=[metadata])
         docs.extend(chunks)
 
@@ -39,6 +48,7 @@ def process_jsonl(input_path: str, output_path: str):
         articles = [json.loads(line) for line in f]
 
     chunked_docs = chunk_articles(articles)
+    
 
     with open(output_path, "w", encoding="utf-8") as out_f:
         for doc in chunked_docs:
