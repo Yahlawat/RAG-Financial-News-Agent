@@ -13,7 +13,7 @@ A Python-based Retrieval-Augmented Generation (RAG) system designed to answer st
 
 ## Sample Conversation 
 
-Below is an example of a sample conversation with the agent I had with the agent on June 04, 2025:
+Below is an example of a sample conversation I had with the agent on June 04, 2025:
 
 ```
 Enter comma-separated tickers to filter by (or press Enter for no filter): TSLA
