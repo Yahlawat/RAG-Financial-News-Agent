@@ -14,10 +14,10 @@ def clean_chunk(text: str) -> str:
 
     return text
 
-def chunk_articles(articles: list[dict], max_characters=1000) -> list[Document]:
+def chunk_articles(articles: list[dict], max_characters=800) -> list[Document]:
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=max_characters,
-        chunk_overlap=400,
+        chunk_overlap=200,
         separators=["\n\n", "\n", ". ", "! ", "? ", " ", ""]
     )
     

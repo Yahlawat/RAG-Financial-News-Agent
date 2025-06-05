@@ -1,73 +1,97 @@
 import os
+import json
+import uuid
+from datetime import datetime
+from typing import Optional
 
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
-from langchain_community.llms import Ollama
+from langchain_ollama import OllamaLLM
 
-from retriever import load_vectorstore, chunk_retriever
+from rag_pipeline.retriever import (
+    load_article_vectorstore,
+    article_chunk_retriever,
+    load_chat_vectorstore,
+    retrieve_chat_memory,
+    add_chat_memory
+)
 
 
-def format_docs(docs: list) -> str:
-    return "\n\n".join(doc.page_content for doc in docs)
 
+def rag_chat(
+    question: str,
+    conversation_id: str,
+    target_tickers: Optional[list[str]] = None,
+    top_k: int = 5,   
+    chat_k: int = 3    
+) -> dict:
 
-def rag_chain(question: str, top_k: int = 5) -> dict:
-    vectorstore_path = "data/chroma_store"
-    vectorstore = load_vectorstore(vectorstore_path)
+    news_store = load_article_vectorstore("data/chroma_store")
+    chat_store = load_chat_vectorstore("data/chat_memory")
 
-    def retrieve_context(query: str) -> str:
-        relevant_docs = chunk_retriever(vectorstore, query=query, k=top_k)
-        return format_docs(relevant_docs)
+    past_qas = retrieve_chat_memory(chat_store, conversation_id, query=question, k=chat_k)
+    chat_context = ""
+    if past_qas:
+        chat_context = "\n\n".join(doc.page_content for doc in past_qas)
+
+    news_docs = article_chunk_retriever(news_store, query=question, target_tickers=target_tickers, top_n=top_k)    
+    news_context = "\n\n".join(doc.page_content for doc in news_docs)
+
+    if chat_context:
+        combined_context = (
+            f"Previous Q&A (same conversation):\n\n{chat_context}\n\n"
+            f"News excerpts:\n\n{news_context}"
+        )
+    else:
+        combined_context = f"News excerpts:\n\n{news_context}"
 
     prompt_template = PromptTemplate.from_template(
-        """You are a financial news expert assistant. Use the following context to answer the question.
+        """You're a helpful assistant with deep expertise in financial news. Using the information provided below, answer the user's question in a clear, structured way:
 
-        Context:
-        {context}
+        1. Start with a one- or two-sentence summary that gets straight to the point.
+        2. Share 2–3 key insights or facts that stand out.
+        3. Explain your reasoning or provide helpful context behind the insights.
+        4. If it makes sense, suggest what the user should keep an eye on or consider doing next.
 
-        Question: {question}
+        Don’t include source links here — they’ll be shared separately.
 
-        Answer:"""
+        Here’s what you’ve got to work with:
+        {combined_context}
+
+        User’s question: {question}
+
+        Your response (use the structure above):"""
     )
 
-    llm = Ollama(
-        model="llama3.2:3b", 
-        temperature=0.0,
-        system="You are a helpful assistant for financial news question answering."
-    )
+
+    llm = OllamaLLM(model="gemma3:4b", temperature=0.0)
 
     chain = (
         {
-            "context": RunnablePassthrough() | (lambda q_for_context: retrieve_context(q_for_context)),
-            "question": RunnablePassthrough(),
+            "combined_context": RunnablePassthrough() | (lambda _: combined_context),
+            "question": RunnablePassthrough()
         }
         | prompt_template
         | llm
     )
 
-    answer_output = chain.invoke(question)
+    answer_output = chain.invoke(question).strip()
 
-    source_docs = chunk_retriever(vectorstore, query=question, k=top_k)
-    sources = [{"text": doc.page_content, "metadata": doc.metadata} for doc in source_docs]
+    add_chat_memory(chat_store, conversation_id=conversation_id, question=question, answer=answer_output)
+
+    sources = []
+    for doc in news_docs:
+        title = doc.metadata.get("title", "").strip()
+        url   = doc.metadata.get("url", "").strip()
+        published_date = datetime.fromisoformat(doc.metadata.get("published_date", "").strip()).date().isoformat()
+        if title and url and published_date:
+            sources.append({"title": title, "url": url, "published_date": published_date})
+        elif title and url:
+            sources.append({"title": title, "url": url, "published_date": "(published_date not available)"})    
 
     return {
-        "answer": answer_output.strip(),
+        "conversation_id": conversation_id,
+        "question": question,
+        "answer": answer_output,
         "sources": sources
     }
-
-
-# Example usage
-if __name__ == "__main__":
-    question = "How is Amazon doing in the current market?"
-    try:
-        result = rag_chain(question=question, top_k=5)
-
-        print("## AI Generated Answer:")
-        print(result["answer"])
-        print("\n## Sources:")
-        for i, source_doc in enumerate(result["sources"]):
-            print(f"\n### Source {i+1}:")
-            print(f"Text: \"{source_doc['text'][:200]}...\"")
-            print(f"Metadata: {source_doc['metadata']}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
