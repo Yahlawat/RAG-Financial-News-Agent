@@ -3,7 +3,6 @@ import sys
 
 from rag_pipeline.rag_chain import rag_chat
 
-
 def run_chat_session():
     
     raw = input("Enter comma-separated tickers to filter by (or press Enter for no filter): ").strip()
