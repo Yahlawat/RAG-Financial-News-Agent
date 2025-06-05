@@ -13,15 +13,15 @@ sentence_transformers>=2.2.2
 chromadb>=0.4.244
 
 # LLM and Transformers
-transformers>=4.38.0 
-accelerate>=0.21.0    
+transformers>=4.38.0
+accelerate>=0.21.0
 
-# Web Interface (Optional)
+# Web Interface
 streamlit>=1.25.0
 gradio>=3.45.0
 
-# API (Optional)
-fastapi>=0.110.0pip
+# API
+fastapi>=0.110.0
 uvicorn>=0.23.0
 requests>=2.31.0
 
