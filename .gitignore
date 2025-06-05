@@ -13,8 +13,10 @@ logs/
 
 # Data & Index Files
 data/chroma_store/
-data/embeddings/
 data/processed_chunks/chunked_articles.jsonl
+data/rag_output/
+data/raw_news/
+data/tickers/
 
 # Drafts & Notes
 drafts/

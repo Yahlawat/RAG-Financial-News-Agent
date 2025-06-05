@@ -38,16 +38,21 @@ def load_chunks_from_file(file_path: str):
     return documents, ids
 
 
+def batch(iterable: list, batch_size: int):
+    for i in range(0, len(iterable), batch_size):
+        yield iterable[i:i + batch_size]
+
+
 def build_chroma_index(
     input_file: str,
     output_path: str,
     model_name: str = "BAAI/bge-base-en-v1.5",
+    batch_size: int = 32,
 ) -> Chroma:
     documents, ids = load_chunks_from_file(input_file)
     logger.info(f"Loaded {len(documents)} documents from file.")
 
     embedding_model = HuggingFaceEmbeddings(model_name=model_name)
-
     os.makedirs(output_path, exist_ok=True)
 
     vectorstore = Chroma(
@@ -71,24 +76,15 @@ def build_chroma_index(
         logger.info("No new documents to add. Vector DB is up to date.")
         return vectorstore
 
-    texts = [doc.page_content for doc in new_documents]
-    metadatas = [doc.metadata for doc in new_documents]
+    logger.info(f"Adding {len(new_documents)} new documents to Chroma DB...")
 
-    logger.info(f"Embedding {len(new_documents)} new documents...")
-    embeddings = [
-        embedding_model.embed_query(text)
-        for text in tqdm(texts, desc="Embedding new docs")
-    ]
+    for doc_batch, id_batch in tqdm(zip(batch(new_documents, batch_size), batch(new_ids, batch_size)),
+                                    total=len(new_documents)//batch_size + 1,
+                                    desc="Indexing in batches"):
+        vectorstore.add_documents(documents=doc_batch, ids=id_batch)
 
-    vectorstore.add_embeddings(
-        texts=texts,
-        embeddings=embeddings,
-        metadatas=metadatas,
-        ids=new_ids
-    )
     vectorstore.persist()
     logger.info(f"Added {len(new_documents)} new documents to Chroma DB.")
-
     return vectorstore
 
 
