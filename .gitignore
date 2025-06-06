@@ -12,11 +12,12 @@ logs/
 *.log
 
 # Data & Index Files
-data/chroma_store/
-data/processed_chunks/chunked_articles.jsonl
-data/rag_output/
-data/raw_news/
-data/tickers/
+data/chroma_store/*
+data/processed_chunks/*
+data/rag_output/*
+data/raw_news/*
+data/tickers/*
+data/chat_memory/*      
 
 # Drafts & Notes
 drafts/
