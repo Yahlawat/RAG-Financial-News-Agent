@@ -81,13 +81,22 @@ def rag_chat(
 
     sources = []
     for doc in news_docs:
-        title = doc.metadata.get("title", "").strip()
-        url   = doc.metadata.get("url", "").strip()
-        published_date = datetime.fromisoformat(doc.metadata.get("published_date", "").strip()).date().isoformat()
+        title = str(doc.metadata.get("title", "")).strip()
+        url = str(doc.metadata.get("url", "")).strip()
+        published_str = str(doc.metadata.get("published_date", ""))
+        published_str = published_str.strip() if published_str else ""
+
+        published_date = None
+        if published_str:
+            try:
+                published_date = datetime.fromisoformat(published_str).date().isoformat()
+            except ValueError:
+                pass
+
         if title and url and published_date:
             sources.append({"title": title, "url": url, "published_date": published_date})
         elif title and url:
-            sources.append({"title": title, "url": url, "published_date": "(published_date not available)"})    
+            sources.append({"title": title, "url": url, "published_date": "(published_date not available)"})
 
     return {
         "conversation_id": conversation_id,
