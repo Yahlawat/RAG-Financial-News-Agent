@@ -2,7 +2,7 @@
 
 A Python-based Retrieval-Augmented Generation (RAG) system designed to answer stock-related questions by scraping, processing, and embedding financial news articles. Showcases expertise in web scraping (Scrapy), data processing (pandas, NumPy), NLP embeddings (HuggingFace, LangChain), and semantic search (ChromaDB). Utilizes LLMs (Ollama) for generating structured, context-rich responses.
 
-<img src="./Images/project_image.png" width="300" alt="UFC Logo">
+<img src="./Images/project_image.png" width="300" alt="Project Logo">
 
 ## Features
 
