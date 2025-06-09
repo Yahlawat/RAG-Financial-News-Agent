@@ -5,7 +5,7 @@ from uuid import uuid4
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from rag_pipeline.retriever import load_vectorstore, add_chat_memory, retrieve_chat_memory
+from rag_pipeline.retriever import load_vectorstore
 from rag_pipeline.rag_chain import rag_chat
 
 app = FastAPI()
@@ -39,15 +39,6 @@ async def chat_endpoint(req: ChatRequest):
         chat_k=req.chat_k,
         article_store=article_store,
         chat_store=chat_store,
-    )
-
-    # Save user question and assistant answer to memory
-    add_chat_memory(
-        chat_store=chat_store,
-        conversation_id=req.conversation_id,
-        user_id=req.user_id,
-        question=req.question,
-        answer=response["answer"]
     )
 
     return response

@@ -8,6 +8,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from rag_pipeline.retriever import get_full_chat_history, load_vectorstore
 
+
+@st.cache_resource
+def get_chat_store() -> "Chroma":
+    """Load the chat memory vector store only once."""
+    return load_vectorstore("data/chat_memory")
+
 API_URL = "http://localhost:8000/chat"
 
 st.set_page_config(
@@ -38,7 +44,7 @@ if "conversation_id" not in st.session_state:
 
 if "chat_store" not in st.session_state:
     try:
-        st.session_state["chat_store"] = load_vectorstore("data/chat_memory")
+        st.session_state["chat_store"] = get_chat_store()
     except Exception as e:
         st.error(f"Failed to load chat vectorstore: {e}")
         st.stop()
