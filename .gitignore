@@ -12,15 +12,27 @@ logs/
 *.log
 
 # Data & Index Files
-data/chroma_store/**
-data/processed_chunks/**
-data/rag_output/**
-data/raw_news/**
-data/tickers/**
-data/chat_memory/**
+data/
+data/**/*
+*.csv
+*.json
+*.xlsx
+*.xls
+*.db
+*.sqlite
+*.sqlite3
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.npy
+*.npz
 
 # Drafts & Notes
 drafts/
+drafts/**/*
 
 # System Files
 .DS_Store
@@ -33,6 +45,3 @@ Thumbs.db
 # Environment Files
 .env
 .env.*
-
-# Git
-.gitignore
