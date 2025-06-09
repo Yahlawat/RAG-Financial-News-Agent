@@ -3,38 +3,41 @@ import json
 import uuid
 from datetime import datetime
 from typing import Optional
+from langchain_chroma import Chroma
 
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_ollama import OllamaLLM
 
 from rag_pipeline.retriever import (
-    load_article_vectorstore,
+    load_vectorstore,
     article_chunk_retriever,
-    load_chat_vectorstore,
     retrieve_chat_memory,
     add_chat_memory
 )
 
-
-
 def rag_chat(
     question: str,
     conversation_id: str,
+    user_id: str,
     target_tickers: Optional[list[str]] = None,
     top_k: int = 5,   
-    chat_k: int = 3    
+    chat_k: int = 3,
+    article_store: Optional[Chroma] = None,
+    chat_store: Optional[Chroma] = None
 ) -> dict:
 
-    news_store = load_article_vectorstore("data/chroma_store")
-    chat_store = load_chat_vectorstore("data/chat_memory")
+    if article_store is None:
+        article_store = load_vectorstore("data/chroma_store")
+    if chat_store is None:
+        chat_store = load_vectorstore("data/chat_memory")
 
     past_qas = retrieve_chat_memory(chat_store, conversation_id, query=question, k=chat_k)
     chat_context = ""
     if past_qas:
         chat_context = "\n\n".join(doc.page_content for doc in past_qas)
 
-    news_docs = article_chunk_retriever(news_store, query=question, target_tickers=target_tickers, top_n=top_k)    
+    news_docs = article_chunk_retriever(article_store, query=question, target_tickers=target_tickers, top_n=top_k)    
     news_context = "\n\n".join(doc.page_content for doc in news_docs)
 
     if chat_context:
@@ -47,12 +50,7 @@ def rag_chat(
 
     prompt_template = PromptTemplate.from_template(
         """You're a helpful assistant with deep expertise in financial news. Using the information provided below, answer the user's question in a clear, structured way:
-
-        1. Start with a one- or two-sentence summary that gets straight to the point.
-        2. Share 2–3 key insights or facts that stand out.
-        3. Explain your reasoning or provide helpful context behind the insights.
-        4. If it makes sense, suggest what the user should keep an eye on or consider doing next.
-
+    
         Don’t include source links here — they’ll be shared separately.
 
         Here’s what you’ve got to work with:
@@ -77,7 +75,7 @@ def rag_chat(
 
     answer_output = chain.invoke(question).strip()
 
-    add_chat_memory(chat_store, conversation_id=conversation_id, question=question, answer=answer_output)
+    add_chat_memory(chat_store, conversation_id=conversation_id, user_id=user_id, question=question, answer=answer_output)
 
     sources = []
     for doc in news_docs:
@@ -100,6 +98,7 @@ def rag_chat(
 
     return {
         "conversation_id": conversation_id,
+        "user_id": user_id,
         "question": question,
         "answer": answer_output,
         "sources": sources
