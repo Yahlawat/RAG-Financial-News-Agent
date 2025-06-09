@@ -7,16 +7,28 @@ from uuid import uuid4
 import math
 import os
 
+_EMBEDDING_CACHE: dict[str, HuggingFaceEmbeddings] = {}
+_VECTORSTORE_CACHE: dict[tuple[str, str], Chroma] = {}
+
+
+def _get_embedding(model_name: str) -> HuggingFaceEmbeddings:
+    if model_name not in _EMBEDDING_CACHE:
+        _EMBEDDING_CACHE[model_name] = HuggingFaceEmbeddings(model_name=model_name)
+    return _EMBEDDING_CACHE[model_name]
+
 def load_vectorstore(
     persist_directory: str,
-    model_name: str = "BAAI/bge-base-en-v1.5"
+    model_name: str = "BAAI/bge-base-en-v1.5",
 ) -> Chroma:
     os.makedirs(persist_directory, exist_ok=True)
-    embedding_model = HuggingFaceEmbeddings(model_name=model_name)
-    return Chroma(
-        persist_directory=persist_directory,
-        embedding_function=embedding_model
-    )
+    key = (persist_directory, model_name)
+    if key not in _VECTORSTORE_CACHE:
+        embedding_model = _get_embedding(model_name)
+        _VECTORSTORE_CACHE[key] = Chroma(
+            persist_directory=persist_directory,
+            embedding_function=embedding_model,
+        )
+    return _VECTORSTORE_CACHE[key]
 
 
 def article_chunk_reranker(
