@@ -109,6 +109,7 @@ def add_chat_memory(
             f"{conversation_id}_{timestamp}_assistant"
         ]
     )
+    chat_store.persist()
 
 
 def retrieve_chat_memory(
