@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 from langchain_chroma import Chroma
+import logging
 
 from dotenv import load_dotenv
 from langchain_core.prompts import PromptTemplate
@@ -12,12 +13,16 @@ from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
+
 from rag_pipeline.retriever import (
     load_vectorstore,
     article_chunk_retriever,
     retrieve_chat_memory,
     add_chat_memory
 )
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def rag_chat(
     question: str,
@@ -29,18 +34,24 @@ def rag_chat(
     article_store: Optional[Chroma] = None,
     chat_store: Optional[Chroma] = None
 ) -> dict:
-
+    logger.info(
+        "Processing question for conversation %s", conversation_id
+    )
     if article_store is None:
         article_store = load_vectorstore("data/chroma_store")
     if chat_store is None:
         chat_store = load_vectorstore("data/chat_memory")
 
-    past_qas = retrieve_chat_memory(chat_store, conversation_id, query=question, k=chat_k)
+    past_qas = retrieve_chat_memory(
+        chat_store, conversation_id, query=question, k=chat_k
+    )
     chat_context = ""
     if past_qas:
         chat_context = "\n\n".join(doc.page_content for doc in past_qas)
 
-    news_docs = article_chunk_retriever(article_store, query=question, target_tickers=target_tickers, top_n=top_k)    
+    news_docs = article_chunk_retriever(
+        article_store, query=question, target_tickers=target_tickers, top_n=top_k
+    )
     news_context = "\n\n".join(doc.page_content for doc in news_docs)
 
     if chat_context:
@@ -77,9 +88,15 @@ def rag_chat(
         | llm
     )
 
-    answer_output = chain.invoke(question).strip()
+    try:
+        answer_output = chain.invoke(question).strip()
+    except Exception as e:
+        logger.exception("LLM chain failed: %s", e)
+        raise
 
     add_chat_memory(chat_store, conversation_id=conversation_id, user_id=user_id, question=question, answer=answer_output)
+
+    logger.info("Answer generated for conversation %s", conversation_id)
 
     sources = []
     for doc in news_docs:
