@@ -13,21 +13,10 @@ logs/
 
 # Data & Index Files
 # Ignore everything under data/
-data/*
-data/**/*
-
-# Allow .gitkeep to preserve empty folder structure
-!data/chat_memory/
-!data/chat_memory/.gitkeep
-
-!data/chroma_store/
-!data/chroma_store/.gitkeep
-
-!data/processed_chunks/
-!data/processed_chunks/.gitkeep
-
-!data/raw_news/
-!data/raw_news/.gitkeep
+data/chat_memory/
+data/chroma_store/
+data/processed_chunks/
+data/raw_news/
 
 # Include all contents inside tickers/
 !data/tickers/**
