@@ -5,9 +5,12 @@ from datetime import datetime
 from typing import Optional
 from langchain_chroma import Chroma
 
+from dotenv import load_dotenv
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
-from langchain_ollama import OllamaLLM
+from langchain_openai import ChatOpenAI
+
+load_dotenv()
 
 from rag_pipeline.retriever import (
     load_vectorstore,
@@ -62,7 +65,8 @@ def rag_chat(
     )
 
 
-    llm = OllamaLLM(model="gemma3:4b", temperature=0.0)
+    api_key = os.getenv("OPENAI_API_KEY")
+    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.0, openai_api_key=api_key)
 
     chain = (
         {
