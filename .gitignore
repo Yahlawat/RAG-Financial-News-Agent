@@ -12,23 +12,25 @@ logs/
 *.log
 
 # Data & Index Files
-data/
+# Ignore everything under data/
+data/*
 data/**/*
-*.csv
-*.json
-*.xlsx
-*.xls
-*.db
-*.sqlite
-*.sqlite3
-*.parquet
-*.feather
-*.h5
-*.hdf5
-*.pkl
-*.pickle
-*.npy
-*.npz
+
+# Allow .gitkeep to preserve empty folder structure
+!data/chat_memory/
+!data/chat_memory/.gitkeep
+
+!data/chroma_store/
+!data/chroma_store/.gitkeep
+
+!data/processed_chunks/
+!data/processed_chunks/.gitkeep
+
+!data/raw_news/
+!data/raw_news/.gitkeep
+
+# Include all contents inside tickers/
+!data/tickers/**
 
 # Drafts & Notes
 drafts/
