@@ -1,8 +1,11 @@
-import uuid
 import requests
 import streamlit as st
 import sys
 import os
+import uuid
+
+from .session_manager import load_session, save_session
+
 import csv
 
 FALLBACK_TICKERS = [
@@ -72,7 +75,7 @@ if not user_id:
 # SESSION STATE SETUP
 # ──────────────────────────────
 if "conversation_id" not in st.session_state:
-    st.session_state["conversation_id"] = str(uuid.uuid4())
+    st.session_state["conversation_id"] = load_session(user_id)
 
 if "chat_store" not in st.session_state:
     try:
@@ -109,8 +112,10 @@ if st.session_state["chat_history"]:
 
 # Optional Reset Button
 if st.button("🔄 Reset Conversation"):
-    st.session_state["conversation_id"] = str(uuid.uuid4())
+    new_id = str(uuid.uuid4())
+    st.session_state["conversation_id"] = new_id
     st.session_state["chat_history"] = []
+    save_session(user_id, new_id)
     st.rerun()
 
 # ──────────────────────────────

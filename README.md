@@ -176,6 +176,14 @@ main.py                      # Interactive terminal chat entry point
    python main.py
    ```
 
+## Persistent Chat History
+
+The Streamlit interface stores conversation IDs for each user in `data/chat_sessions.json`.
+Chat messages themselves are saved in the `chat_memory/` Chroma collection. When you
+restart the app and log in with the same username, your previous chat history will
+load automatically. Use the "Reset Conversation" button to begin a fresh thread; the
+new conversation ID is saved so you can return to it later.
+
 ## In Progress / Roadmap
 
 - **Web Frontend**: React-based interface for user questions  
