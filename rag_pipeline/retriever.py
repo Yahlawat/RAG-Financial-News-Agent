@@ -8,6 +8,9 @@ import logging
 import math
 import os
 
+from dotenv import load_dotenv
+load_dotenv()
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -25,14 +28,12 @@ def load_vectorstore(
     logger.info("Vectorstore loaded")
     return store
 
-
 def article_chunk_reranker(
     docs: list[Document],
     target_tickers: Optional[list[str]] = None,
 ) -> list[Document]:
-    logger.debug(
-        "Reranking %d documents for tickers: %s", len(docs), target_tickers
-    )
+    logger.debug("Reranking %d documents for tickers: %s", len(docs), target_tickers)
+
     def score(doc: Document) -> float:
         s = 0
         metadata = doc.metadata
@@ -50,7 +51,7 @@ def article_chunk_reranker(
 
         # Ticker-match boost
         if target_tickers:
-            tickers_in_doc = metadata.get("relevant_tickers", "").split(", ")
+            tickers_in_doc = [t.strip() for t in metadata.get("relevant_tickers", "").split(",")]
             if any(t in tickers_in_doc for t in target_tickers):
                 s += 5
 
@@ -71,7 +72,6 @@ def article_chunk_retriever(
     target_tickers: Optional[list[str]] = None,
     top_n: int = 5
 ) -> list[Document]:
-
     logger.info("Retrieving articles for query: %s", query)
     search_kwargs = {"k": 15}
     retriever = vectorstore.as_retriever(search_kwargs=search_kwargs)
@@ -91,6 +91,10 @@ def add_chat_memory(
     model_name: str = "BAAI/bge-base-en-v1.5"
 ) -> None:
     timestamp = datetime.now().isoformat()
+    suffix = str(uuid4()).split("-")[0] 
+
+    if not isinstance(answer, str):
+        answer = getattr(answer, "content", str(answer))
 
     user_doc = Document(
         page_content=question,
@@ -117,14 +121,11 @@ def add_chat_memory(
     chat_store.add_documents(
         documents=[user_doc, assistant_doc],
         ids=[
-            f"{conversation_id}_{timestamp}_user",
-            f"{conversation_id}_{timestamp}_assistant"
+            f"{conversation_id}_{timestamp}_user_{suffix}",
+            f"{conversation_id}_{timestamp}_assistant_{suffix}"
         ]
     )
-
-    chat_store.persist()
     logger.info("Stored chat messages for conversation %s", conversation_id)
-
 
 def retrieve_chat_memory(
     chat_store: Chroma,
@@ -132,10 +133,7 @@ def retrieve_chat_memory(
     query: str,
     k: int = 3
 ) -> list[Document]:
-
-    logger.debug(
-        "Retrieving last %d chat messages for conversation %s", k, conversation_id
-    )
+    logger.debug("Retrieving relevant chat messages for conversation %s", conversation_id)
     metadata_filter = {"conversation_id": conversation_id}
     retriever = chat_store.as_retriever(search_kwargs={"k": k, "filter": metadata_filter})
     return retriever.invoke(query)
@@ -144,8 +142,7 @@ def get_full_chat_history(
     chat_store: Chroma,
     conversation_id: str,
     user_id: Optional[str] = None
-    ) -> list[Document]:
-
+) -> list[Document]:
     logger.debug("Fetching full chat history for conversation %s", conversation_id)
     if user_id:
         filters = {
@@ -158,11 +155,8 @@ def get_full_chat_history(
         filters = {"conversation_id": conversation_id}
 
     results = chat_store.get(where=filters, include=["documents", "metadatas"])
-    
     docs = [
         Document(page_content=content, metadata=metadata)
         for content, metadata in zip(results["documents"], results["metadatas"])
     ]
-
     return sorted(docs, key=lambda doc: doc.metadata.get("timestamp", ""))
-

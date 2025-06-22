@@ -4,7 +4,7 @@ import sys
 import os
 import uuid
 
-from .session_manager import load_session, save_session
+from session_manager import load_session, save_session
 
 import csv
 

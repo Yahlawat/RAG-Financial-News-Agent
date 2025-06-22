@@ -3,7 +3,8 @@
 venv/
 
 # Byte-compiled / optimized / DLL files
-__pycache__/
+**/__pycache__/
+**.pyc
 *.py[cod]
 *.so
 
@@ -17,9 +18,7 @@ data/chat_memory/
 data/chroma_store/
 data/processed_chunks/
 data/raw_news/
-
-# Include all contents inside tickers/
-!data/tickers/**
+data/chat_sessions/
 
 # Drafts & Notes
 drafts/

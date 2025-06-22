@@ -2,7 +2,7 @@ import json
 import os
 import uuid
 
-SESSION_FILE = os.path.join(os.path.dirname(__file__), '..', 'data', 'chat_sessions.json')
+SESSION_FILE = os.path.join(os.path.dirname(__file__), '..', 'data', 'chat_sessions', 'chat_sessions.json')
 
 
 def load_session(user_id: str) -> str:
