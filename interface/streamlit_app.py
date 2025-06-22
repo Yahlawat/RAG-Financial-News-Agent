@@ -6,6 +6,45 @@ import uuid
 
 from .session_manager import load_session, save_session
 
+import csv
+
+FALLBACK_TICKERS = [
+    "AAPL",
+    "MSFT",
+    "GOOGL",
+    "AMZN",
+    "TSLA",
+    "NVDA",
+    "META",
+    "NFLX",
+    "JPM",
+    "BRK.B",
+]
+
+
+def load_tickers_from_csv(path: str = "data/tickers/tickers.csv", column: str = "ticker_symbol"):
+    """Load a list of tickers from a CSV file.
+
+    Falls back to ``FALLBACK_TICKERS`` if the file is missing or unreadable.
+    """
+    if not os.path.exists(path):
+        return FALLBACK_TICKERS
+
+    try:
+        with open(path, newline="") as f:
+            reader = csv.DictReader(f)
+            # choose provided column or first available
+            col = column if column in reader.fieldnames else reader.fieldnames[0]
+            tickers = [row.get(col, "").strip().upper() for row in reader]
+            tickers = [t for t in tickers if t]
+            return tickers if tickers else FALLBACK_TICKERS
+    except Exception as e:
+        st.warning(f"Failed to read {path}: {e}")
+        return FALLBACK_TICKERS
+
+
+TICKERS = load_tickers_from_csv()
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from rag_pipeline.retriever import get_full_chat_history, load_vectorstore
@@ -67,10 +106,9 @@ if "chat_history" not in st.session_state:
 # CHAT HISTORY DISPLAY
 # ──────────────────────────────
 if st.session_state["chat_history"]:
-    st.write("### 🗨️ Chat History")
     for msg in st.session_state["chat_history"]:
-        speaker = "You" if msg["role"] == "user" else "Assistant"
-        st.markdown(f"**{speaker}:** {msg['content']}")
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
 # Optional Reset Button
 if st.button("🔄 Reset Conversation"):
@@ -83,34 +121,35 @@ if st.button("🔄 Reset Conversation"):
 # ──────────────────────────────
 # USER INPUT
 # ──────────────────────────────
-question = st.text_input("Ask a question")
-tickers_raw = st.text_input("Tickers (comma-separated)")
+selected_tickers = st.multiselect(
+    "Filter by ticker(s)", options=TICKERS, key="tickers_select"
+)
 
-if st.button("Submit"):
-    if not question.strip():
-        st.warning("Please enter a question.")
-    else:
-        tickers = [t.strip().upper() for t in tickers_raw.split(',') if t.strip()] if tickers_raw else None
-        payload = {
-            "question": question,
-            "conversation_id": conversation_id,
-            "user_id": user_id,
-            "target_tickers": tickers,
-        }
+question = st.chat_input("Ask a question")
 
-        try:
-            r = requests.post(API_URL, json=payload)
-            r.raise_for_status()
-            data = r.json()
+if question:
+    tickers = [t.strip().upper() for t in selected_tickers] if selected_tickers else None
+    payload = {
+        "question": question,
+        "conversation_id": conversation_id,
+        "user_id": user_id,
+        "target_tickers": tickers,
+    }
 
-            # Append to chat state
-            st.session_state["chat_history"].append({"role": "user", "content": question})
-            st.session_state["chat_history"].append({"role": "assistant", "content": data.get("answer", "")})
+    try:
+        r = requests.post(API_URL, json=payload)
+        r.raise_for_status()
+        data = r.json()
 
-            # Display
-            st.markdown(f"**Assistant:** {data.get('answer', '')}")
+        # Append to chat state
+        st.session_state["chat_history"].append({"role": "user", "content": question})
+        st.session_state["chat_history"].append({"role": "assistant", "content": data.get("answer", "")})
+
+        # Display assistant answer with sources
+        with st.chat_message("assistant"):
+            st.markdown(data.get("answer", ""))
             if data.get("sources"):
-                st.write("### Sources")
+                st.markdown("**Sources**")
                 for src in data["sources"]:
                     title = src.get("title", "source")
                     url = src.get("url", "")
@@ -120,5 +159,5 @@ if st.button("Submit"):
                     else:
                         st.markdown(f"- {title} ({date})")
 
-        except Exception as e:
-            st.error(f"Error contacting API: {e}")
+    except Exception as e:
+        st.error(f"Error contacting API: {e}")
