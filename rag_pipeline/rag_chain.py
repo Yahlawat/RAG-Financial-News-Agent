@@ -1,15 +1,15 @@
+import os
+import logging
 from datetime import datetime
 from typing import Optional
 from langchain_chroma import Chroma
-import logging
-
-from dotenv import load_dotenv
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI
 
-load_dotenv()
+from dotenv import load_dotenv
 
+load_dotenv()
 
 from rag_pipeline.retriever import (
     load_vectorstore,
@@ -72,9 +72,9 @@ def rag_chat(
         Your response (use the structure above):"""
     )
 
-
     api_key = os.getenv("OPENAI_API_KEY")
-    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.0, openai_api_key=api_key)
+    
+    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.0, api_key=api_key)
 
     chain = (
         {
@@ -86,7 +86,11 @@ def rag_chat(
     )
 
     try:
-        answer_output = chain.invoke(question).strip()
+        answer_output = chain.invoke({
+            "combined_context": combined_context,
+            "question": question
+        }).content.strip()
+
     except Exception as e:
         logger.exception("LLM chain failed: %s", e)
         raise
