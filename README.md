@@ -1,201 +1,175 @@
 # RAG - Financial News Q&A Agent
 
-A Python-based Retrieval-Augmented Generation (RAG) system designed to answer stock-related questions by scraping, processing, and embedding financial news articles. Showcases expertise in web scraping (Scrapy), data processing (pandas, NumPy), NLP embeddings (HuggingFace, LangChain), and semantic search (ChromaDB). Utilizes OpenAI's ChatGPT via LangChain for generating structured, context-rich responses.
+A production-ready Python-based Retrieval-Augmented Generation (RAG) system designed to answer stock-related questions by scraping, processing, and embedding financial news articles. The system combines web scraping (Scrapy), semantic search (ChromaDB), embeddings (HuggingFace), and LLM-powered responses (OpenAI ChatGPT) to provide contextual, up-to-date financial insights.
 
-<img src="./Images/project_image.png" width="300" alt="Project Logo">
+<img src="./Images/project_image.png" width="300" alt="project_logo">
 
 ## Features
 
-- **Web Scraping:** Scrapes and stores financial news articles (over 40,000+ saved) with metadata via a Scrapy Spider (`finnews_scraper/`).
-- **Data Processing & Chunking:** Cleans and slices articles into smaller chunks for efficient embeddings (`processed_chunks/`).
-- **Embeddings & Semantic Search:** Generates embeddings using HuggingFace models and stores vectors in ChromaDB (`chroma_store/`) for fast, relevant retrieval.
-- **RAG-based Q&A Agent:** Answers stock-related questions using OpenAI's ChatGPT via LangChain.
+- **Intelligent Web Scraping**: Automated financial news collection from FinViz with 40,000+ articles stored
+- **Advanced Text Processing**: Smart chunking and cleaning of articles for optimal embeddings
+- **Semantic Search**: Fast, relevant document retrieval using ChromaDB vector database
+- **Context-Aware Responses**: RAG-powered Q&A with conversation memory and ticker filtering
+- **Webapp Interface**: Streamlit web app, and FastAPI REST endpoints
+- **Session Management**: Persistent conversation history across sessions
 
-## Sample Conversation 
+## Sample Conversation
 
-Below is an example of a sample conversation I had with the agent on June 04, 2025:
+Below is an example conversation demonstrating the system's capabilities:
 
-```
-Enter comma-separated tickers to filter by (or press Enter for no filter): TSLA
-Starting new chat session. (Type 'exit' or 'quit' to end)
+<img src="./Images/usage_screenshot_1.png" width="750" alt="screenshot_1">
+<img src="./Images/usage_screenshot_2.png" width="750" alt="screenshot_2">
 
-You: What’s the current sentiment on TSLA based on the latest news?
+## Quick Start
 
-Assistant: Here’s the current sentiment on TSLA based on the latest news:
+### 1. Installation
 
-**Summary:**
-The sentiment surrounding Tesla (TSLA) is cautiously negative, driven by recent disappointing sales figures, concerns about Elon Musk’s ventures, and a perception that the stock is undervalued.
+```bash
+# Clone the repository
+git clone <repository-url>
+cd rag-financial-news
 
-**Key Insights:**
-1. **Weak Sales Performance:** Tesla’s sales growth has declined by 13% YoY in deliveries.
-2. **Musk’s Diversified Spending:** Elon Musk’s use of Tesla’s resources for SpaceX and xAI is raising concerns about capital allocation.
-3. **Undervaluation Perception:** Analysts view TSLA as attractively priced, suggesting potential upside amid short-term challenges.
-
-**Reasoning:**
-The combination of weak sales, strategic shifts, and analyst views of undervaluation paints a picture of cautious skepticism. The market is weighing long-term potential against current execution challenges.
-
-**What to Watch Next:**
-- Monitor Tesla’s next earnings report for signs of a sales turnaround.
-- Track developments in Musk’s ventures (SpaceX, xAI) to gauge their impact on TSLA’s resources.
-
-**Sources:**
-- “Pre-Markets in the Green as Q1 Earnings Season Gathers Pace” — [FinViz](https://finviz.com/news/30742/pre-markets-in-the-green-as-q1-earnings-season-gathers-pace) (2025-04-22)
-- “Why Is Caterpillar (CAT) Up 12.1% Since Last Earnings Report?” — [FinViz](https://finviz.com/news/70521/why-is-caterpillar-cat-up-121-since-last-earnings-report) (2025-05-30)
-- “Cathie Wood Goes Bargain Hunting: 1 Monster Artificial Intelligence (AI) Semiconductor Stock She Just Bought on the Dip. (Hint: It's Not Nvidia or AMD.)” — [FinViz](https://finviz.com/news/69069/cathie-wood-goes-bargain-hunting-1-monster-artificial-intelligence-ai-semiconductor-stock-she-just-bought-on-the-dip-hint-its-not-nvidia-or-amd) (2025-05-29)
-- “Carlisle (CSL) Up 2.1% Since Last Earnings Report: Can It Continue?” — [FinViz](https://finviz.com/news/65323/carlisle-csl-up-21-since-last-earnings-report-can-it-continue) (2025-05-23)
-- “Why Is CSX (CSX) Up 13.1% Since Last Earnings Report?” — [FinViz](https://finviz.com/news/59621/why-is-csx-csx-up-131-since-last-earnings-report) (2025-05-16)
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-```
-You: Can you point out any conflicting viewpoints?
+### 2. Environment Setup
 
-Assistant: **Summary:**
-Conflicting viewpoints around TSLA stem from differing assessments of sales performance, Musk’s strategic decisions, and the broader economic climate.
+```bash
+# Copy environment template
+cp .env.example .env
 
-**Key Insights:**
-1. **Sales vs. Economy:** The Fed sees a healthy economy with low inflation, but Tesla’s sales decline suggests execution issues.
-2. **Musk’s Priorities vs. Investors:** Musk’s investments in SpaceX and xAI are strategic, yet investors worry about resource allocation.
-3. **Growth Potential vs. Short-Term Performance:** Some view TSLA as undervalued with AI upside, while others focus on immediate sales challenges.
-
-**Reasoning:**
-These conflicting views highlight tension between long-term growth potential and short-term execution. Positive economic indicators clash with Tesla’s declining sales.
-
-**What to Watch Next:**
-- How Tesla addresses sales and capital allocation.
-- Market reaction to xAI developments to see if the AI thesis holds.
-
-**Sources:**
-- “Is the Fed on the Right Track?” — [FinViz](https://finviz.com/news/56306/is-the-fed-on-the-right-track) (2025-05-13)
-- “Ball Announces CFO Departure” — [FinViz](https://finviz.com/news/64220/ball-announces-cfo-departure) (2025-05-22)
-- “Cboe Expands Data Vantage Sales Team to Strengthen Asia Pacific Presence” — [FinViz](https://finviz.com/news/56772/cboe-expands-data-vantage-sales-team-to-strengthen-asia-pacific-presence) (2025-05-13)
-- “Did You Catch the Latest From Shopify and Axon Enterprise?” — [FinViz](https://finviz.com/news/55426/did-you-catch-the-latest-from-shopify-and-axon-enterprise) (2025-05-13)
-- “Cboe Global Markets Announces Departure of Global President Dave Howson” — [FinViz](https://finviz.com/news/67773/cboe-global-markets-announces-departure-of-global-president-dave-howson) (2025-05-28)
+# Edit .env and add your OpenAI API key
+OPENAI_API_KEY=your_openai_api_key_here
 ```
 
-```
-You: How might these differing perspectives impact TSLA’s near-term stock performance?
+### 3. Data Collection & Processing
 
-Assistant: **Summary:**
-These differing perspectives—sales weakness, earnings revisions, and Musk’s strategic shifts—will likely drive continued volatility and cautious near-term performance for TSLA.
+```bash
+# Scrape financial news (this may take several hours for full S&P500, reduce number of tickers for faster scraping)
+scrapy crawl finviz_news
 
-**Key Insights:**
-1. **Earnings Revisions Impact:** Consensus earnings estimates are 6.74% lower over 30 days, driving negative sentiment.
-2. **Sales Weakness Feeds Skepticism:** Declining delivery numbers reinforce concerns about execution.
-3. **Musk’s Ventures as Catalyst:** Continued funding of SpaceX and xAI by Tesla adds uncertainty that could exacerbate downward pressure.
+# Process and chunk articles
+python rag_pipeline/chunker.py
 
-**Reasoning:**
-Declining sales, negative estimate revisions, and resource allocation concerns create a feedback loop of volatility. Investors will remain cautious until clear turnaround signs appear.
-
-**What to Watch Next:**
-- Tesla’s next earnings call for sales stabilization.
-- Direction of consensus earnings estimate revisions (Zacks Rank indicator).
-- Developments around xAI as a sign of Musk’s strategic focus.
-
-**Sources:**
-- “Copart, Inc. (CPRT) Increases Yet Falls Behind Market: What Investors Need to Know” — [FinViz](https://finviz.com/news/56753/copart-inc-cprt-increases-yet-falls-behind-market-what-investors-need-to-know) (2025-05-13)
-- “Deciphering Dover (DOV) International Revenue Trends” — [FinViz](https://finviz.com/news/55961/deciphering-dover-dov-international-revenue-trends) (2025-05-13)
-- “Dollar General (DG) Ascends While Market Falls: Some Facts to Note” — [FinViz](https://finviz.com/news/49060/dollar-general-dg-ascends-while-market-falls-some-facts-to-note) (2025-05-06)
-- “W&T Offshore (WTI) Reports Q1 Loss, Tops Revenue Estimates” — [FinViz](https://finviz.com/news/49033/wt-offshore-wti-reports-q1-loss-tops-revenue-estimates) (2025-05-06)
-- “Diamondback Energy (FANG) Stock Falls Amid Market Uptick: What Investors Need to Know” — [FinViz](https://finviz.com/news/39353/diamondback-energy-fang-stock-falls-amid-market-uptick-what-investors-need-to-know) (2025-04-29)
-
-You: exit  
-Ending chat. Goodbye!
+# Generate embeddings and build vector database
+python rag_pipeline/embedder.py
 ```
 
-## Project Structure
+### 4. Run the Application
+
+#### API Server (FastAPI)
+```bash
+uvicorn deployment.app:app --host 0.0.0.0 --port 8000
+```
+
+#### Web Interface (Streamlit)
+```bash
+streamlit run interface/streamlit_app.py
+```
+
+## Project Architecture
 
 ```
-data/                         # All data inputs and outputs
+rag-financial-news/
 │
-├── chat_memory/              # Conversation history (ChromaDB)
-├── chroma_store/             # Persisted vector database (ChromaDB)
-├── processed_chunks/         # Cleaned, chunked article sections
-├── raw_news/                 # Raw scraped articles (JSONL)
-├── tickers/                  # Ticker list for scraping financial news (S&P500)
-│ ├── get_sp500_tickers.py # Script to fetch S&P 500 tickers
-│ └── tickers.csv # Stored list of tickers
-```
+├── data/                          # Data storage and processing
+│   ├── raw_news/                  # Scraped articles (JSONL format)
+│   ├── processed_chunks/          # Cleaned, chunked text segments
+│   ├── chroma_store/              # Vector database (ChromaDB)
+│   ├── chat_memory/               # Conversation history storage
+│   ├── chat_sessions/             # User session management
+│   └── tickers/                   # S&P 500 ticker symbols
+│       ├── get_sp500_tickers.py   # Ticker fetching utility
+│       └── tickers.csv            # Stored ticker list
+│
+├── finnews_scraper/               # Scrapy-based news scraping
+│   ├── spiders/
+│   │   └── finviz_spider.py       # FinViz news spider
+│   ├── items.py                   # Article data schema
+│   ├── pipelines.py               # Data processing pipeline
+│   └── settings.py                # Scrapy configuration
+│
+├── rag_pipeline/                  # Core RAG components
+│   ├── chunker.py                 # Text preprocessing & chunking
+│   ├── embedder.py                # Vector embedding generation
+│   ├── retriever.py               # Document retrieval & ranking
+│   └── rag_chain.py               # LLM response generation
+│
+├── interface/                     # User interfaces
+│   ├── streamlit_app.py           # Web-based chat interface
+│   └── session_manager.py         # Session persistence
+│
+├── deployment/                    # Production deployment
+│   └── app.py                     # FastAPI REST endpoints
+│
+├── tests/                         # Unit tests
+│   ├── test_chunker.py
+│   ├── test_retriever.py
+│   └── test_rag_chain.py
 
 ```
-finnews_scraper/             # Scrapy pipeline to fetch news
-├── spiders/                 # Spider logic
-│ └── finviz_spider.py       # Spider for Finviz news sources
-├── items.py                 # Article schema
-├── pipelines.py             # Save pipeline
-└── settings.py              # Scrapy settings
+
+## Key Components
+
+### Data Pipeline
+- **Scraper**: Automated collection of financial news from FinViz with duplicate detection
+- **Chunker**: Intelligent text segmentation optimized for semantic search
+- **Embedder**: HuggingFace-based vector embeddings using BAAI/bge-base-en-v1.5
+
+### RAG System
+- **Retriever**: Multi-stage document retrieval with ticker filtering and recency scoring
+- **Memory**: Persistent conversation context using ChromaDB
+- **Generator**: OpenAI GPT-3.5-turbo for structured, context-aware responses
+
+### Interface
+- **Streamlit**: User-friendly web interface with session management
+- **FastAPI**: RESTful API for integration with external applications
+
+## Configuration
+
+### Ticker Management
+The system uses S&P 500 companies by default. Update `data/tickers/tickers.csv` to modify the scope:
+
+```bash
+python data/tickers/get_sp500_tickers.py  # Refresh S&P 500 list
 ```
 
-```
-rag_pipeline/                # Core RAG components
-├── chunker.py               # Text cleaner & chunker
-├── embedder.py              # Embedding logic using HuggingFace
-├── retriever.py             # Vector store retrieval (Chroma)
-└── rag_chain.py             # Prompt + LLM answer generator
-```
+### Embedding Model
+Default: `BAAI/bge-base-en-v1.5`. To change the model, update both `embedder.py` and `retriever.py`:
 
-```
-main.py                      # Interactive terminal chat entry point
+```python
+model_name = "your-preferred-model"
 ```
 
-## Getting Started
+### LLM Configuration  
+Default: OpenAI GPT-3.5-turbo. Modify `rag_pipeline/rag_chain.py`:
 
-1. **Install dependencies**
+```python
+llm = ChatOpenAI(model="gpt-4", temperature=0.0, api_key=api_key)
+```
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Advanced Features
 
-2. **Configure OpenAI**
+### Session Persistence
+- Conversations automatically resume across sessions
+- User-specific chat history with ChromaDB storage
+- Session reset functionality for fresh conversations
 
-   Copy `.env.example` to `.env` and add your OpenAI API key:
+### Smart Retrieval
+- Document reranking based on publication date recency
+- Ticker-specific filtering for focused results
+- Conversation context integration for follow-up questions
 
-   ```bash
-   cp .env.example .env
-   # edit .env and set OPENAI_API_KEY
-   ```
-
-3. **Run the scraper**
-
-   ```bash
-   scrapy crawl finviz_news
-   ```
-
-4. **Generate Chunks, embeddings & update vectorstore**
-
-   ```bash
-   python chunker.py
-   ```
-
-   ```bash
-   python embedder.py
-   ```
-
-5. **Start Q&A session**
-
-   ```bash
-   python main.py
-   ```
-
-## Persistent Chat History
-
-The Streamlit interface stores conversation IDs for each user in `data/chat_sessions.json`.
-Chat messages themselves are saved in the `chat_memory/` Chroma collection. When you
-restart the app and log in with the same username, your previous chat history will
-load automatically. Use the "Reset Conversation" button to begin a fresh thread; the
-new conversation ID is saved so you can return to it later.
-
-## In Progress / Roadmap
-
-- **Web Frontend**: React-based interface for user questions  
-- **Graph Neo4J:** Build Neo4J graphs to improve retrieval process
-- **LLM Fine-Tuning**: Domain-adapted financial LLM  
+### Scalable Architecture
+- Batch processing for large-scale embedding generation
+- Duplicate detection and incremental updates
+- Production-ready FastAPI deployment
 
 ## License
 
-MIT
+MIT License - see LICENSE file for details.
 
 ---
 
-*Built by Yash Ahlawat*
-
-
+**Built by Yash Ahlawat** | *Showcasing expertise in RAG systems*
