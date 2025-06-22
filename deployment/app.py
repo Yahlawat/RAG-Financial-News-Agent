@@ -1,12 +1,11 @@
 # app.py
 from typing import List, Optional
-from uuid import uuid4
 import logging
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from rag_pipeline.retriever import load_vectorstore, add_chat_memory, retrieve_chat_memory
+from rag_pipeline.retriever import load_vectorstore
 from rag_pipeline.rag_chain import rag_chat
 
 logging.basicConfig(level=logging.INFO)
@@ -53,16 +52,5 @@ async def chat_endpoint(req: ChatRequest):
     except Exception as e:
         logger.exception("RAG pipeline failed: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error")
-
-    # Save user question and assistant answer to memory
-    add_chat_memory(
-        chat_store=chat_store,
-        conversation_id=req.conversation_id,
-        user_id=req.user_id,
-        question=req.question,
-        answer=response["answer"]
-    )
-
-    logger.info("Response returned for conversation %s", req.conversation_id)
 
     return response
