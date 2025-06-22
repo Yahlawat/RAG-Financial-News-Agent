@@ -121,6 +121,8 @@ def add_chat_memory(
             f"{conversation_id}_{timestamp}_assistant"
         ]
     )
+
+    chat_store.persist()
     logger.info("Stored chat messages for conversation %s", conversation_id)
 
 
