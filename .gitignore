@@ -12,23 +12,14 @@ logs/
 *.log
 
 # Data & Index Files
-data/
-data/**/*
-*.csv
-*.json
-*.xlsx
-*.xls
-*.db
-*.sqlite
-*.sqlite3
-*.parquet
-*.feather
-*.h5
-*.hdf5
-*.pkl
-*.pickle
-*.npy
-*.npz
+# Ignore everything under data/
+data/chat_memory/
+data/chroma_store/
+data/processed_chunks/
+data/raw_news/
+
+# Include all contents inside tickers/
+!data/tickers/**
 
 # Drafts & Notes
 drafts/

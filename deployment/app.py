@@ -1,12 +1,15 @@
 # app.py
 from typing import List, Optional
-from uuid import uuid4
+import logging
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from rag_pipeline.retriever import load_vectorstore, add_chat_memory, retrieve_chat_memory
+from rag_pipeline.retriever import load_vectorstore
 from rag_pipeline.rag_chain import rag_chat
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -17,8 +20,10 @@ chat_store = None
 @app.on_event("startup")
 def init_vectorstores() -> None:
     global article_store, chat_store
+    logger.info("Initializing vector stores")
     article_store = load_vectorstore("data/chroma_store")
     chat_store = load_vectorstore("data/chat_memory")
+    logger.info("Vector stores initialized")
 
 class ChatRequest(BaseModel):
     question: str
@@ -30,24 +35,22 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 async def chat_endpoint(req: ChatRequest):
-    response = rag_chat(
-        question=req.question,
-        conversation_id=req.conversation_id,
-        user_id=req.user_id,
-        target_tickers=req.tickers,
-        top_k=req.top_k,
-        chat_k=req.chat_k,
-        article_store=article_store,
-        chat_store=chat_store,
+    logger.info(
+        "Chat request from user %s in conversation %s", req.user_id, req.conversation_id
     )
-
-    # Save user question and assistant answer to memory
-    add_chat_memory(
-        chat_store=chat_store,
-        conversation_id=req.conversation_id,
-        user_id=req.user_id,
-        question=req.question,
-        answer=response["answer"]
-    )
+    try:
+        response = rag_chat(
+            question=req.question,
+            conversation_id=req.conversation_id,
+            user_id=req.user_id,
+            target_tickers=req.tickers,
+            top_k=req.top_k,
+            chat_k=req.chat_k,
+            article_store=article_store,
+            chat_store=chat_store,
+        )
+    except Exception as e:
+        logger.exception("RAG pipeline failed: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
     return response
