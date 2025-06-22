@@ -1,6 +1,6 @@
 # RAG - Financial News Q&A Agent
 
-A Python-based Retrieval-Augmented Generation (RAG) system designed to answer stock-related questions by scraping, processing, and embedding financial news articles. Showcases expertise in web scraping (Scrapy), data processing (pandas, NumPy), NLP embeddings (HuggingFace, LangChain), and semantic search (ChromaDB). Utilizes LLMs (Ollama) for generating structured, context-rich responses.
+A Python-based Retrieval-Augmented Generation (RAG) system designed to answer stock-related questions by scraping, processing, and embedding financial news articles. Showcases expertise in web scraping (Scrapy), data processing (pandas, NumPy), NLP embeddings (HuggingFace, LangChain), and semantic search (ChromaDB). Utilizes OpenAI's ChatGPT via LangChain for generating structured, context-rich responses.
 
 <img src="./Images/project_image.png" width="300" alt="Project Logo">
 
@@ -9,7 +9,7 @@ A Python-based Retrieval-Augmented Generation (RAG) system designed to answer st
 - **Web Scraping:** Scrapes and stores financial news articles (over 40,000+ saved) with metadata via a Scrapy Spider (`finnews_scraper/`).
 - **Data Processing & Chunking:** Cleans and slices articles into smaller chunks for efficient embeddings (`processed_chunks/`).
 - **Embeddings & Semantic Search:** Generates embeddings using HuggingFace models and stores vectors in ChromaDB (`chroma_store/`) for fast, relevant retrieval.
-- **RAG-based Q&A Agent:** Answers stock-related questions using an LLM (Ollama + LangChain).
+- **RAG-based Q&A Agent:** Answers stock-related questions using OpenAI's ChatGPT via LangChain.
 
 ## Sample Conversation 
 
@@ -145,13 +145,22 @@ main.py                      # Interactive terminal chat entry point
    pip install -r requirements.txt
    ```
 
-2. **Run the scraper**
+2. **Configure OpenAI**
+
+   Copy `.env.example` to `.env` and add your OpenAI API key:
+
+   ```bash
+   cp .env.example .env
+   # edit .env and set OPENAI_API_KEY
+   ```
+
+3. **Run the scraper**
 
    ```bash
    scrapy crawl finviz_news
    ```
 
-3. **Generate Chunks, embeddings & update vectorstore**
+4. **Generate Chunks, embeddings & update vectorstore**
 
    ```bash
    python chunker.py
@@ -161,7 +170,7 @@ main.py                      # Interactive terminal chat entry point
    python embedder.py
    ```
 
-4. **Start Q&A session**
+5. **Start Q&A session**
 
    ```bash
    python main.py
