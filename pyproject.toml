@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=67", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "finnews"
+version = "0.1.0"
+description = "Financial News RAG system: scraper, vector store, API, and UI"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Yash Ahlawat" }]
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+scraper = [
+  "scrapy==2.11.0",
+]
+api = [
+  "fastapi==0.110.0",
+  "uvicorn==0.23.0",
+  "python-dotenv==1.0.0",
+]
+ui = [
+  "streamlit==1.25.0",
+  "requests==2.31.0",
+]
+rag = [
+  "langchain==0.3.25",
+  "langchain-core==0.3.62",
+  "langchain-community==0.3.24",
+  "langchain-openai==0.1.0",
+  "sentence-transformers==2.2.2",
+  "chromadb==0.4.244",
+  "transformers==4.38.0",
+  "accelerate==0.21.0",
+  "tqdm>=4.0.0",
+]
+dev = [
+  "pytest==8.0.0",
+  "ipython==9.2.0",
+  "ipykernel==6.25.0",
+]
+
+[project.scripts]
+finnews-api = "finnews.api.main:run"
+finnews-chunk = "finnews.rag.chunker:main"
+finnews-embed = "finnews.rag.embedder:main"
+finnews-scrape = "finnews.scraper.runner:main"
+finnews-ui = "finnews.ui.app:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["finnews", "finnews.api", "finnews.ui", "finnews.rag", "finnews.scraper"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-select = ["I"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+addopts = "-q"

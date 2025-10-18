@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 # Ensure package is importable
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
@@ -35,9 +36,9 @@ def import_chunker(monkeypatch):
     monkeypatch.setitem(sys.modules, 'langchain.text_splitter', ts_mod)
     monkeypatch.setitem(sys.modules, 'langchain.schema', schema_mod)
 
-    if 'rag_pipeline.chunker' in sys.modules:
-        del sys.modules['rag_pipeline.chunker']
-    return importlib.import_module('rag_pipeline.chunker')
+    if 'finnews.rag.chunker' in sys.modules:
+        del sys.modules['finnews.rag.chunker']
+    return importlib.import_module('finnews.rag.chunker')
 
 
 def test_chunk_articles_sentence_splitting(monkeypatch):
