@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 # Ensure package is importable
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
@@ -35,9 +36,9 @@ def import_retriever(monkeypatch):
     monkeypatch.setitem(sys.modules, 'langchain_huggingface', hf_mod)
     monkeypatch.setitem(sys.modules, 'langchain.schema', schema_mod)
 
-    if 'rag_pipeline.retriever' in sys.modules:
-        del sys.modules['rag_pipeline.retriever']
-    return importlib.import_module('rag_pipeline.retriever'), Document, DummyChroma
+    if 'finnews.rag.retriever' in sys.modules:
+        del sys.modules['finnews.rag.retriever']
+    return importlib.import_module('finnews.rag.retriever'), Document, DummyChroma
 
 
 def test_article_chunk_retriever_top_k(monkeypatch):
