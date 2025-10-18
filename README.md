@@ -50,22 +50,34 @@ OPENAI_API_KEY=your_openai_api_key_here
 scrapy crawl finviz_news
 
 # Process and chunk articles
-python rag_pipeline/chunker.py
+python src/finnews/rag/chunker.py
 
 # Generate embeddings and build vector database
-python rag_pipeline/embedder.py
+python src/finnews/rag/embedder.py
 ```
 
 ### 4. Run the Application
 
 #### API Server (FastAPI)
 ```bash
-uvicorn deployment.app:app --host 0.0.0.0 --port 8000
+uvicorn finnews.api.main:app --host 0.0.0.0 --port 8000
 ```
 
 #### Web Interface (Streamlit)
 ```bash
-streamlit run interface/streamlit_app.py
+streamlit run src/finnews/ui/app.py
+```
+
+### Optional: Console Scripts
+After installing in editable mode, you can use:
+
+```bash
+pip install -e .[scraper,api,ui,rag]
+
+finnews-scrape      # Run Scrapy spider
+finnews-chunk       # Build chunks from raw articles
+finnews-embed       # Build/update Chroma index
+finnews-api         # Start FastAPI server
 ```
 
 ## Project Architecture
@@ -110,6 +122,51 @@ rag-financial-news/
 
 ```
 
+## Project Architecture (Updated)
+
+```
+Financial-News-Agent/
+├── src/
+│   └── finnews/
+│       ├── api/                    # FastAPI app
+│       │   └── main.py
+│       ├── ui/                     # Streamlit app
+│       │   ├── app.py
+│       │   └── session_manager.py
+│       ├── rag/                    # RAG components
+│       │   ├── chunker.py
+│       │   ├── embedder.py
+│       │   ├── retriever.py
+│       │   └── rag_chain.py
+│       ├── scraper/                # Scrapy project
+│       │   ├── items.py
+│       │   ├── pipelines.py
+│       │   ├── settings.py
+│       │   └── spiders/
+│       │       └── finviz_spider.py
+│       └── common/                 # Shared configuration
+│           └── config.py
+├── data/
+│   ├── raw_news/
+│   ├── processed_chunks/
+│   ├── chroma_store/
+│   ├── chat_memory/
+│   ├── chat_sessions/
+│   └── tickers/
+├── tests/
+├── docs/
+│   ├── RUNBOOK.md
+│   └── STRUCTURE.md
+├── scrapy.cfg
+├── pyproject.toml
+├── requirements.txt
+├── .pre-commit-config.yaml
+├── .gitignore
+└── README.md
+```
+
+See docs/STRUCTURE.md for details.
+
 ## Key Components
 
 ### Data Pipeline
@@ -143,7 +200,7 @@ model_name = "your-preferred-model"
 ```
 
 ### LLM Configuration  
-Default: OpenAI GPT-3.5-turbo. Modify `rag_pipeline/rag_chain.py`:
+Default: OpenAI GPT-3.5-turbo. Modify `src/finnews/rag/rag_chain.py`:
 
 ```python
 llm = ChatOpenAI(model="gpt-4", temperature=0.0, api_key=api_key)
