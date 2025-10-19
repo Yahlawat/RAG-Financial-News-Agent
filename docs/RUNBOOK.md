@@ -64,7 +64,7 @@ STREAMLIT_PORT=8501
 finnews-scrape
 
 # Or direct Scrapy command
-scrapy crawl finviz_news
+scrapy crawl finviz_news   # run from repo root with scrapy.cfg at root
 
 # Or Python script
 python src/finnews/scraper/runner.py
@@ -154,6 +154,10 @@ netstat -an | grep :8501  # UI port
 # Reduce batch size in embedder.py
 # Or process smaller ticker subsets
 ```
+
+### Scrapy configuration migration
+- The `config/` directory was removed. The Scrapy config file `scrapy.cfg` now lives at the repository root.
+- If you previously ran `scrapy -c config/scrapy.cfg ...`, just run `scrapy ...` from the repo root, or set `SCRAPY_SETTINGS_MODULE=finnews.scraper.settings`.
 
 ### Reset Operations
 
