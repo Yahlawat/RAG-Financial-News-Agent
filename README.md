@@ -85,6 +85,10 @@ finnews-api         # Start FastAPI server
 finnews-ui          # Start Streamlit web interface
 ```
 
+### Scrapy config location change
+- The former `config/` directory has been removed.
+- `scrapy.cfg` now resides at the repository root. Run Scrapy commands from the repo root (e.g., `scrapy crawl finviz_news`) or set `SCRAPY_SETTINGS_MODULE=finnews.scraper.settings` if running elsewhere.
+
 ## Project Architecture
 
 ```
@@ -103,8 +107,7 @@ Financial-News-Agent/
 │   ├── chat_memory/       # Conversation history
 │   └── tickers/           # S&P 500 tickers
 ├── tests/                 # Test suite
-├── docs/                  # Documentation
-└── config/                # Configuration files
+└── docs/                  # Documentation
 ```
 
 📋 **Detailed structure**: See [docs/STRUCTURE.md](docs/STRUCTURE.md)
@@ -124,8 +127,6 @@ Financial-News-Agent/
 ### Interface
 - **Streamlit**: User-friendly web interface with session management
 - **FastAPI**: RESTful API for integration with external applications
-
-## Configuration
 
 ### Ticker Management
 The system uses S&P 500 companies by default. Update `data/tickers/tickers.csv` to modify the scope:

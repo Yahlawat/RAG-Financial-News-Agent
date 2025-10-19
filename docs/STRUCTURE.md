@@ -51,8 +51,7 @@ Financial-News-Agent/
 │   ├── Images/              # Screenshots and images
 │   ├── RUNBOOK.md          # Operational guide
 │   └── STRUCTURE.md        # This file
-├── config/                   # Configuration files
-│   └── scrapy.cfg          # Scrapy configuration
+├── scrapy.cfg          # Scrapy configuration
 ├── pyproject.toml           # Package configuration
 ├── env.example              # Environment template
 └── README.md               # Main documentation
@@ -101,7 +100,7 @@ Financial-News-Agent/
 
 - **Central Config**: `src/finnews/common/config.py`
 - **Environment**: `.env` file (see `env.example`)
-- **Scrapy Config**: `config/scrapy.cfg`
+- **Scrapy Config**: `scrapy.cfg`
 - **Package Config**: `pyproject.toml`
 
 ## Testing
