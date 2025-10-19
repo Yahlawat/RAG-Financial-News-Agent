@@ -8,5 +8,6 @@ def ensure_dirs() -> None:
         settings.PROCESSED_CHUNKS_PATH,
         settings.RAW_NEWS_PATH.parent,
         settings.TICKERS_DIR,
+        settings.CHAT_SESSIONS_FILE.parent,
     ]:
         Path(p).mkdir(parents=True, exist_ok=True)
