@@ -1,3 +1,4 @@
+pydantic-settings>=2.0.0
 
 [api]
 fastapi==0.110.0
@@ -6,19 +7,22 @@ python-dotenv==1.0.0
 
 [dev]
 pytest==8.0.0
-ipython==9.2.0
+ipython<9.0,>=8.12
 ipykernel==6.25.0
 
 [rag]
-langchain==0.3.25
-langchain-core==0.3.62
-langchain-community==0.3.24
-langchain-openai==0.1.0
-sentence-transformers==2.2.2
-chromadb==0.4.244
-transformers==4.38.0
-accelerate==0.21.0
+langchain<0.4,>=0.3.25
+langchain-core<0.4,>=0.3.60
+langchain-community<0.4,>=0.3.24
+langchain-openai<0.3,>=0.2.0
+langchain-chroma==0.1.4
+langchain-huggingface==0.1.2
+sentence-transformers<3,>=2.6.0
+chromadb<0.6,>=0.4.24
+transformers<4.45,>=4.38
+accelerate<0.31,>=0.21
 tqdm>=4.0.0
+python-dotenv==1.0.0
 
 [scraper]
 scrapy==2.11.0
