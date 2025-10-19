@@ -1,78 +1,56 @@
-# Byte-compiled / optimized / DLL files
+# ----------------------------------------
+# Python bytecode and caches
+# ----------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
 
+# ----------------------------------------
 # Virtual environments
+# ----------------------------------------
 .venv/
 venv/
 
+# ----------------------------------------
 # Distribution / packaging
+# ----------------------------------------
 .Python
 build/
 dist/
 *.egg-info/
 
-# Unit test / coverage reports
+# ----------------------------------------
+# Unit test / coverage / linting
+# ----------------------------------------
 .pytest_cache/
 .coverage*
+.mypy_cache/
+.ruff_cache/
 
-# Editors
+# ----------------------------------------
+# Editors / IDEs
+# ----------------------------------------
 .vscode/
 .idea/
 
-# Environment
+# ----------------------------------------
+# Environment variables
+# ----------------------------------------
 .env
 .env.*
 
-# Data artifacts
+# ----------------------------------------
+# Data artifacts (generated or large)
+# ----------------------------------------
 data/raw_news/
 data/processed_chunks/
 data/chroma_store/
 data/chat_memory/
 data/chat_sessions/
-
-# Scrapy
-.scrapy/
-
-# Streamlit
-.streamlit/
-
-__pycache__/
-*.pyc
-.venv/
-.env
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-dist/
-build/
-*.egg-info/
-.scrapy/
-.streamlit/
-
-# Data artifacts
-data/raw_news/
-data/processed_chunks/
-data/chroma_store/
-data/chat_memory/
 data/tickers/
-__pycache__/
-*.pyc
-.venv/
-.env
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-dist/
-build/
-*.egg-info/
+
+# ----------------------------------------
+# Scrapy / Streamlit caches
+# ----------------------------------------
 .scrapy/
 .streamlit/
-
-# Data artifacts
-data/raw_news/
-data/processed_chunks/
-data/chroma_store/
-data/chat_memory/
-data/tickers/
