@@ -22,7 +22,7 @@ class SaveNewsJSONLPipeline:
 
     def open_spider(self, spider):
         """Open the file when spider starts."""
-        self.file = open(self.output_file, "a", encoding="utf-8")
+        self.file = open(self.output_file, "a+", encoding="utf-8")
 
     def process_item(self, item, spider):
         url = item.get("url")
@@ -32,11 +32,14 @@ class SaveNewsJSONLPipeline:
             return None
 
         self.seen_urls.add(url)
-        if self.file:
-            self.file.write(json.dumps(dict(item)) + "\n")
+        
+        if self.file is None:
+            self.file = open(self.output_file, "a+", encoding="utf-8")
+        
+        self.file.write(json.dumps(dict(item)) + "\n")
         return item
 
-    def close_spider(self, spider):
+    def close_spider(self, spider) -> None:
         if self.file:
             self.file.close()
             self.file = None
