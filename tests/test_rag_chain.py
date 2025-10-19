@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 # Ensure package is importable
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 
@@ -62,19 +63,19 @@ def import_rag_chain(monkeypatch):
     def fake_add_chat_memory(store, conversation_id, user_id, question, answer, model_name='x'):
         pass
 
-    retr_mod = types.ModuleType('rag_pipeline.retriever')
+    retr_mod = types.ModuleType('finnews.rag.retriever')
     retr_mod.load_vectorstore = lambda path, model_name='x': DummyStore()
     retr_mod.article_chunk_retriever = fake_article_chunk_retriever
     retr_mod.retrieve_chat_memory = fake_retrieve_chat_memory
     retr_mod.add_chat_memory = fake_add_chat_memory
-    sys.modules['rag_pipeline.retriever'] = retr_mod
+    sys.modules['finnews.rag.retriever'] = retr_mod
     schema_mod = types.ModuleType('langchain.schema')
     schema_mod.Document = Document
     monkeypatch.setitem(sys.modules, 'langchain.schema', schema_mod)
 
-    if 'rag_pipeline.rag_chain' in sys.modules:
-        del sys.modules['rag_pipeline.rag_chain']
-    return importlib.import_module('rag_pipeline.rag_chain'), Document, DummyStore
+    if 'finnews.rag.rag_chain' in sys.modules:
+        del sys.modules['finnews.rag.rag_chain']
+    return importlib.import_module('finnews.rag.rag_chain'), Document, DummyStore
 
 
 def test_rag_chat_answer_generation(monkeypatch):

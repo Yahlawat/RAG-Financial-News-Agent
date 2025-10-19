@@ -1,37 +1,78 @@
-# Virtual Environments
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
 .venv/
 venv/
 
-# Byte-compiled / optimized / DLL files
-**/__pycache__/
-**.pyc
-*.py[cod]
-*.so
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/
 
-# Logs and Debug
-logs/
-*.log
+# Unit test / coverage reports
+.pytest_cache/
+.coverage*
 
-# Data & Index Files
-# Ignore everything under data/
-data/chat_memory/
-data/chroma_store/
-data/processed_chunks/
-data/raw_news/
-data/chat_sessions/
-
-# Drafts & Notes
-drafts/
-drafts/**/*
-
-# System Files
-.DS_Store
-Thumbs.db
-
-# VSCode / IDE
+# Editors
 .vscode/
 .idea/
 
-# Environment Files
+# Environment
 .env
 .env.*
+
+# Data artifacts
+data/raw_news/
+data/processed_chunks/
+data/chroma_store/
+data/chat_memory/
+data/chat_sessions/
+
+# Scrapy
+.scrapy/
+
+# Streamlit
+.streamlit/
+
+__pycache__/
+*.pyc
+.venv/
+.env
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+.scrapy/
+.streamlit/
+
+# Data artifacts
+data/raw_news/
+data/processed_chunks/
+data/chroma_store/
+data/chat_memory/
+data/tickers/
+__pycache__/
+*.pyc
+.venv/
+.env
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/
+.scrapy/
+.streamlit/
+
+# Data artifacts
+data/raw_news/
+data/processed_chunks/
+data/chroma_store/
+data/chat_memory/
+data/tickers/
