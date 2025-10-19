@@ -18,15 +18,21 @@ def load_chunks_from_file(file_path: str):
 
     with open(file_path, "r", encoding="utf-8") as f:
         for idx, line in enumerate(f):
-
-            item = json.loads(line)
-            chunk = item.get("content", "").strip()
-            metadata = {
-                    "title": item["metadata"].get("title", ""),
-                    "url": item["metadata"].get("url", ""),
-                    "relevant_tickers": ", ".join(item["metadata"].get("relevant_tickers", [])),
-                    "published_date": item["metadata"].get("published_date", "")
-                }
+            try:
+                item = json.loads(line)
+                chunk = item.get("content", "").strip()
+                
+                # Handle missing metadata gracefully
+                item_metadata = item.get("metadata", {})
+                metadata = {
+                        "title": item_metadata.get("title", ""),
+                        "url": item_metadata.get("url", ""),
+                        "relevant_tickers": ", ".join(item_metadata.get("relevant_tickers", [])) if isinstance(item_metadata.get("relevant_tickers"), list) else item_metadata.get("relevant_tickers", ""),
+                        "published_date": item_metadata.get("published_date", "")
+                    }
+            except (json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Skipping invalid line {idx}: {e}")
+                continue
             if not chunk:
                 continue
 

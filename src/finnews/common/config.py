@@ -1,5 +1,6 @@
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -14,6 +15,14 @@ class Settings(BaseSettings):
     API_HOST: str = "127.0.0.1"
     API_PORT: int = 8000
     STREAMLIT_PORT: int = 8501
+    
+    # Add validation for ports
+    @field_validator('API_PORT', 'STREAMLIT_PORT')
+    @classmethod
+    def validate_ports(cls, v):
+        if not (1 <= v <= 65535):
+            raise ValueError('Port must be between 1 and 65535')
+        return v
 
     # Data paths (directories)
     CHROMA_DIR: Path = ROOT / "data" / "chroma_store"

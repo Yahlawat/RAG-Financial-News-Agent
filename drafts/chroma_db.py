@@ -1,17 +1,27 @@
 from langchain_community.vectorstores import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
+import os
 
 # Load the existing Chroma store
 embedding_model = HuggingFaceEmbeddings(model_name="BAAI/bge-base-en-v1.5")
+persist_dir = "../data/chroma_store"
+
+# Verify the directory exists
+if not os.path.exists(persist_dir):
+    raise FileNotFoundError(f"Chroma store directory not found: {persist_dir}")
+
 vectorstore = Chroma(
-    persist_directory="../data/chroma_store",
+    persist_directory=persist_dir,
     embedding_function=embedding_model
 )
 
 # Fetch document IDs and count them
-db_contents = vectorstore.get()
-num_chunks = len(db_contents["ids"])
-print(f"Total article chunks in Chroma DB: {num_chunks}")
+try:
+    db_contents = vectorstore.get()
+    num_chunks = len(db_contents["ids"])
+    print(f"Total article chunks in Chroma DB: {num_chunks}")
+except Exception as e:
+    print(f"Error accessing Chroma DB: {str(e)}")
 
 matches = [
     metadata for metadata in db_contents["metadatas"]
@@ -25,13 +35,13 @@ for doc_id, doc, metadata in zip(db_contents["ids"], db_contents["documents"], d
     tickers = metadata.get("relevant_tickers", "")
     
     if isinstance(tickers, str):
-        if "NVDA" in tickers:
+        if "TSLA" in tickers:
             matched.append((doc_id, doc, metadata))
     elif isinstance(tickers, list):
-        if "NVDA" in tickers:
+        if "TSLA" in tickers:
             matched.append((doc_id, doc, metadata))
 
-print(f"Found {len(matched)} chunks related to 'NVDA'.")
+print(f"Found {len(matched)} chunks related to 'TSLA'.")
 
 # Print up to 5 examples
 for i, (doc_id, doc, meta) in enumerate(matched[:5]):

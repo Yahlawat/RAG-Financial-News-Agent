@@ -18,17 +18,25 @@ class SaveNewsJSONLPipeline:
                     except json.JSONDecodeError:
                         continue
 
+        self.file = None
+
+    def open_spider(self, spider):
+        """Open the file when spider starts."""
         self.file = open(self.output_file, "a", encoding="utf-8")
 
     def process_item(self, item, spider):
         url = item.get("url")
-        if url in self.seen_urls:
-            spider.logger.info(f"Duplicate skipped: {url}")
+        if not url or url in self.seen_urls:
+            if url:
+                spider.logger.info(f"Duplicate skipped: {url}")
             return None
 
         self.seen_urls.add(url)
-        self.file.write(json.dumps(dict(item)) + "\n")
+        if self.file:
+            self.file.write(json.dumps(dict(item)) + "\n")
         return item
 
     def close_spider(self, spider):
-        self.file.close()
+        if self.file:
+            self.file.close()
+            self.file = None
