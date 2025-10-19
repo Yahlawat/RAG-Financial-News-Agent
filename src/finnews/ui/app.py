@@ -1,3 +1,5 @@
+import os, sys
+from streamlit.web import cli as stcli
 import streamlit as st
 import requests
 
@@ -42,7 +44,16 @@ def run():
                     st.markdown(f"- [{s.get('title','source')}]({s.get('url','#')}) ({s.get('published_date','')})")
         except requests.RequestException as e:
             st.error(f"API request failed: {e}")
-
+            
+def main() -> None:
+    script = os.path.abspath(__file__)
+    args = [
+        "streamlit", "run", script,
+        "--server.port", str(settings.streamlit_port),
+        "--server.headless", "true",
+    ]
+    sys.argv = args
+    sys.exit(stcli.main())
 
 if __name__ == "__main__":
     run()
