@@ -24,5 +24,6 @@ src/finnews/ui/__init__.py
 src/finnews/ui/app.py
 src/finnews/ui/session_manager.py
 tests/test_chunker.py
+tests/test_config_aliases.py
 tests/test_rag_chain.py
 tests/test_retriever.py
