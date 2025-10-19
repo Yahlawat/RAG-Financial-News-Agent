@@ -2,7 +2,7 @@
 
 A production-ready Python-based Retrieval-Augmented Generation (RAG) system designed to answer stock-related questions by scraping, processing, and embedding financial news articles. The system combines web scraping (Scrapy), semantic search (ChromaDB), embeddings (HuggingFace), and LLM-powered responses (OpenAI ChatGPT) to provide contextual, up-to-date financial insights.
 
-<img src="./Images/project_image.png" width="300" alt="project_logo">
+<img src="./docs/Images/project_image.png" width="300" alt="project_logo">
 
 ## Features
 
@@ -17,8 +17,8 @@ A production-ready Python-based Retrieval-Augmented Generation (RAG) system desi
 
 Below is an example conversation demonstrating the system's capabilities:
 
-<img src="./Images/usage_screenshot_1.png" width="750" alt="screenshot_1">
-<img src="./Images/usage_screenshot_2.png" width="750" alt="screenshot_2">
+<img src="./docs/Images/usage_screenshot_1.png" width="750" alt="screenshot_1">
+<img src="./docs/Images/usage_screenshot_2.png" width="750" alt="screenshot_2">
 
 ## Quick Start
 
@@ -81,48 +81,6 @@ finnews-api         # Start FastAPI server
 ```
 
 ## Project Architecture
-
-```
-rag-financial-news/
-│
-├── data/                          # Data storage and processing
-│   ├── raw_news/                  # Scraped articles (JSONL format)
-│   ├── processed_chunks/          # Cleaned, chunked text segments
-│   ├── chroma_store/              # Vector database (ChromaDB)
-│   ├── chat_memory/               # Conversation history storage
-│   ├── chat_sessions/             # User session management
-│   └── tickers/                   # S&P 500 ticker symbols
-│       ├── get_sp500_tickers.py   # Ticker fetching utility
-│       └── tickers.csv            # Stored ticker list
-│
-├── finnews_scraper/               # Scrapy-based news scraping
-│   ├── spiders/
-│   │   └── finviz_spider.py       # FinViz news spider
-│   ├── items.py                   # Article data schema
-│   ├── pipelines.py               # Data processing pipeline
-│   └── settings.py                # Scrapy configuration
-│
-├── rag_pipeline/                  # Core RAG components
-│   ├── chunker.py                 # Text preprocessing & chunking
-│   ├── embedder.py                # Vector embedding generation
-│   ├── retriever.py               # Document retrieval & ranking
-│   └── rag_chain.py               # LLM response generation
-│
-├── interface/                     # User interfaces
-│   ├── streamlit_app.py           # Web-based chat interface
-│   └── session_manager.py         # Session persistence
-│
-├── deployment/                    # Production deployment
-│   └── app.py                     # FastAPI REST endpoints
-│
-├── tests/                         # Unit tests
-│   ├── test_chunker.py
-│   ├── test_retriever.py
-│   └── test_rag_chain.py
-
-```
-
-## Project Architecture (Updated)
 
 ```
 Financial-News-Agent/
