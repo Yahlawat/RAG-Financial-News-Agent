@@ -1,3 +1,41 @@
+Metadata-Version: 2.4
+Name: finnews
+Version: 0.1.0
+Summary: Financial News RAG system: scraper, vector store, API, and UI
+Author: Yash Ahlawat
+License: MIT
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pydantic-settings>=2.0.0
+Provides-Extra: scraper
+Requires-Dist: scrapy==2.11.0; extra == "scraper"
+Provides-Extra: api
+Requires-Dist: fastapi==0.110.0; extra == "api"
+Requires-Dist: uvicorn==0.23.0; extra == "api"
+Requires-Dist: python-dotenv==1.0.0; extra == "api"
+Provides-Extra: ui
+Requires-Dist: streamlit==1.25.0; extra == "ui"
+Requires-Dist: requests==2.31.0; extra == "ui"
+Provides-Extra: rag
+Requires-Dist: langchain<0.4,>=0.3.25; extra == "rag"
+Requires-Dist: langchain-core<0.4,>=0.3.60; extra == "rag"
+Requires-Dist: langchain-community<0.4,>=0.3.24; extra == "rag"
+Requires-Dist: langchain-openai<0.3,>=0.2.0; extra == "rag"
+Requires-Dist: langchain-chroma==0.1.4; extra == "rag"
+Requires-Dist: langchain-huggingface==0.1.2; extra == "rag"
+Requires-Dist: sentence-transformers<3,>=2.6.0; extra == "rag"
+Requires-Dist: chromadb<0.6,>=0.4.24; extra == "rag"
+Requires-Dist: transformers<4.45,>=4.38; extra == "rag"
+Requires-Dist: accelerate<0.31,>=0.21; extra == "rag"
+Requires-Dist: tqdm>=4.0.0; extra == "rag"
+Requires-Dist: python-dotenv==1.0.0; extra == "rag"
+Provides-Extra: dev
+Requires-Dist: pytest==8.0.0; extra == "dev"
+Requires-Dist: ipython<9.0,>=8.12; extra == "dev"
+Requires-Dist: ipykernel==6.25.0; extra == "dev"
+Dynamic: license-file
+
 # RAG - Financial News Q&A Agent
 
 A production-ready Python-based Retrieval-Augmented Generation (RAG) system designed to answer stock-related questions by scraping, processing, and embedding financial news articles. The system combines web scraping (Scrapy), semantic search (ChromaDB), embeddings (HuggingFace), and LLM-powered responses (OpenAI ChatGPT) to provide contextual, up-to-date financial insights.
