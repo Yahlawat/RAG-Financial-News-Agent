@@ -50,6 +50,7 @@ def batch(iterable: list, batch_size: int):
         yield iterable[i:i + batch_size]
 
 
+<<<<<<< HEAD
 def delete_old_articles_from_chroma(
     vectorstore: Chroma,
     cutoff_date: str,
@@ -90,6 +91,8 @@ def delete_old_articles_from_chroma(
         return 0
 
 
+=======
+>>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
 def build_chroma_index(
     input_file: str,
     output_path: str,
@@ -130,7 +133,11 @@ def build_chroma_index(
                                     desc="Indexing in batches"):
         vectorstore.add_documents(documents=doc_batch, ids=id_batch)
 
+<<<<<<< HEAD
     # Note: ChromaDB 0.4.24+ auto-persists changes, no need to call persist()
+=======
+    vectorstore.persist()
+>>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
     logger.info(f"Added {len(new_documents)} new documents to Chroma DB.")
     return vectorstore
 

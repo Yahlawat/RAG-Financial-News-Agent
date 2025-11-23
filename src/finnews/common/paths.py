@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 from pathlib import Path
+=======
+﻿from pathlib import Path
+>>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
 from .config import settings
 
 def ensure_dirs() -> None:

@@ -15,7 +15,11 @@ Requires-Dist: fastapi==0.110.0; extra == "api"
 Requires-Dist: uvicorn==0.23.0; extra == "api"
 Requires-Dist: python-dotenv==1.0.0; extra == "api"
 Provides-Extra: ui
+<<<<<<< HEAD
 Requires-Dist: streamlit>=1.32.0; extra == "ui"
+=======
+Requires-Dist: streamlit==1.25.0; extra == "ui"
+>>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
 Requires-Dist: requests==2.31.0; extra == "ui"
 Provides-Extra: rag
 Requires-Dist: langchain<0.4,>=0.3.25; extra == "rag"
@@ -123,10 +127,13 @@ finnews-api         # Start FastAPI server
 finnews-ui          # Start Streamlit web interface
 ```
 
+<<<<<<< HEAD
 ### Scrapy config location change
 - The former `config/` directory has been removed.
 - `scrapy.cfg` now resides at the repository root. Run Scrapy commands from the repo root (e.g., `scrapy crawl finviz_news`) or set `SCRAPY_SETTINGS_MODULE=finnews.scraper.settings` if running elsewhere.
 
+=======
+>>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
 ## Project Architecture
 
 ```
@@ -145,7 +152,12 @@ Financial-News-Agent/
 │   ├── chat_memory/       # Conversation history
 │   └── tickers/           # S&P 500 tickers
 ├── tests/                 # Test suite
+<<<<<<< HEAD
 └── docs/                  # Documentation
+=======
+├── docs/                  # Documentation
+└── config/                # Configuration files
+>>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
 ```
 
 📋 **Detailed structure**: See [docs/STRUCTURE.md](docs/STRUCTURE.md)
@@ -166,6 +178,11 @@ Financial-News-Agent/
 - **Streamlit**: User-friendly web interface with session management
 - **FastAPI**: RESTful API for integration with external applications
 
+<<<<<<< HEAD
+=======
+## Configuration
+
+>>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
 ### Ticker Management
 The system uses S&P 500 companies by default. Update `data/tickers/tickers.csv` to modify the scope:
 

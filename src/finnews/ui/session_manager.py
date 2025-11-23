@@ -1,16 +1,25 @@
 import json
 import os
 import uuid
+<<<<<<< HEAD
 from typing import Optional
+=======
+>>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
 from finnews.common.config import settings
 
 SESSION_FILE = settings.chat_sessions
 
 
 def load_session(user_id: str) -> str:
+<<<<<<< HEAD
     """Return the active conversation_id for a user or create a new one."""
     os.makedirs(os.path.dirname(str(SESSION_FILE)), exist_ok=True)
 
+=======
+    """Return existing conversation_id for a user or create a new one."""
+    os.makedirs(os.path.dirname(str(SESSION_FILE)), exist_ok=True)
+    
+>>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
     data = {}
     if os.path.exists(SESSION_FILE):
         try:
@@ -21,6 +30,7 @@ def load_session(user_id: str) -> str:
             data = {}
 
     if user_id in data:
+<<<<<<< HEAD
         session_value = data[user_id]
         # Handle both old format (dict) and new format (string)
         if isinstance(session_value, dict):
@@ -30,12 +40,20 @@ def load_session(user_id: str) -> str:
     conversation_id = str(uuid.uuid4())
     data[user_id] = conversation_id
 
+=======
+        return data[user_id]
+
+    conversation_id = str(uuid.uuid4())
+    data[user_id] = conversation_id
+    
+>>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
     try:
         with open(SESSION_FILE, 'w') as f:
             json.dump(data, f)
     except IOError:
         # If we can't write to file, still return the conversation ID
         pass
+<<<<<<< HEAD
 
     return conversation_id
 
@@ -93,6 +111,12 @@ def get_active_conversation(user_id: str) -> Optional[str]:
     return None
 
 
+=======
+    
+    return conversation_id
+
+
+>>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
 def save_session(user_id: str, conversation_id: str) -> None:
     """Persist conversation_id for a user."""
     os.makedirs(os.path.dirname(str(SESSION_FILE)), exist_ok=True)

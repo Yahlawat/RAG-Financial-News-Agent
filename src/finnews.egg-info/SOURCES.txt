@@ -20,6 +20,7 @@ src/finnews/scraper/items.py
 src/finnews/scraper/pipelines.py
 src/finnews/scraper/runner.py
 src/finnews/scraper/settings.py
+<<<<<<< HEAD
 src/finnews/scripts/__init__.py
 src/finnews/scripts/chunk.py
 src/finnews/scripts/cleanup_old_articles.py
@@ -28,6 +29,10 @@ src/finnews/scripts/scrape.py
 src/finnews/ui/__init__.py
 src/finnews/ui/app.py
 src/finnews/ui/conversation_history.py
+=======
+src/finnews/ui/__init__.py
+src/finnews/ui/app.py
+>>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
 src/finnews/ui/session_manager.py
 tests/test_chunker.py
 tests/test_config_aliases.py
