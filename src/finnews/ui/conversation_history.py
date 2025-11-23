@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Dict, Optional
 from finnews.common.config import settings
@@ -68,7 +68,7 @@ def get_conversation(user_id: str, conversation_id: str) -> Optional[Dict]:
 
 def create_conversation(user_id: str, conversation_id: str) -> Dict:
     """Create a new empty conversation."""
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     new_conv = {
         "conversation_id": conversation_id,
         "title": "New Chat",
@@ -119,13 +119,13 @@ def add_message(
     message = {
         "role": role,
         "content": content,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
     if sources:
         message["sources"] = sources
 
     conversations[conv_index]["messages"].append(message)
-    conversations[conv_index]["updated_at"] = datetime.utcnow().isoformat()
+    conversations[conv_index]["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     # Auto-generate title from first user message
     if conversations[conv_index]["title"] == "New Chat" and role == "user":

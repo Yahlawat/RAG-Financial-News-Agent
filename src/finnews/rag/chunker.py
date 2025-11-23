@@ -1,8 +1,8 @@
-import os
 import json
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 from finnews.common.config import settings
+from finnews.common.io_utils import ensure_file_dir, read_jsonl
 import re
 import unicodedata
 
@@ -43,20 +43,20 @@ def chunk_articles(articles: list[dict], max_characters=800) -> list[Document]:
     return docs
 
 def process_jsonl(input_path: str, output_path: str):
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    ensure_file_dir(output_path)
 
-    with open(input_path, "r", encoding="utf-8") as f:
-        articles = [json.loads(line) for line in f]
+    # Load articles using utility function
+    articles = list(read_jsonl(input_path))
 
     chunked_docs = chunk_articles(articles)
-    
 
+    # Write chunks to output file
     with open(output_path, "w", encoding="utf-8") as out_f:
         for doc in chunked_docs:
             out_f.write(json.dumps({
                 "content": doc.page_content,
                 "metadata": doc.metadata
-            }) + "\n")
+            }, ensure_ascii=False) + "\n")
 
     print(f"Saved {len(chunked_docs)} chunks to {output_path}")
 

@@ -16,10 +16,9 @@ from pathlib import Path
 from typing import List, Dict
 
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
 
 from finnews.common.config import settings, ROOT
-from finnews.rag.embedder import delete_old_articles_from_chroma
+from finnews.rag.embedder import delete_old_articles_from_chroma, get_embedding_model
 
 
 def parse_date(date_str: str) -> datetime:
@@ -187,7 +186,7 @@ def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
     deleted_count = 0
     if chroma_store_path.exists():
         # Selectively delete old articles from existing vector store
-        embedding_model = HuggingFaceEmbeddings(model_name="BAAI/bge-base-en-v1.5")
+        embedding_model = get_embedding_model()
         vectorstore = Chroma(
             embedding_function=embedding_model,
             persist_directory=str(chroma_store_path),

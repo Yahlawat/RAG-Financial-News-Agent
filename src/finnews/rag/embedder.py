@@ -1,5 +1,4 @@
 import os
-import json
 import logging
 from tqdm import tqdm
 
@@ -7,32 +6,44 @@ from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.schema import Document
 from finnews.common.config import settings
+from finnews.common.io_utils import read_jsonl
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def get_embedding_model(model_name: str | None = None) -> HuggingFaceEmbeddings:
+    """Get the configured embedding model.
+
+    Args:
+        model_name: Optional model name override. If not provided, uses settings.EMBEDDING_MODEL
+
+    Returns:
+        HuggingFaceEmbeddings instance
+    """
+    if model_name is None:
+        model_name = settings.embedding_model
+    return HuggingFaceEmbeddings(model_name=model_name)
 
 
 def load_chunks_from_file(file_path: str):
     documents = []
     ids = []
 
-    with open(file_path, "r", encoding="utf-8") as f:
-        for idx, line in enumerate(f):
-            try:
-                item = json.loads(line)
-                chunk = item.get("content", "").strip()
-                
-                # Handle missing metadata gracefully
-                item_metadata = item.get("metadata", {})
-                metadata = {
-                        "title": item_metadata.get("title", ""),
-                        "url": item_metadata.get("url", ""),
-                        "relevant_tickers": ", ".join(item_metadata.get("relevant_tickers", [])) if isinstance(item_metadata.get("relevant_tickers"), list) else item_metadata.get("relevant_tickers", ""),
-                        "published_date": item_metadata.get("published_date", "")
-                    }
-            except (json.JSONDecodeError, KeyError) as e:
-                logger.warning(f"Skipping invalid line {idx}: {e}")
-                continue
+    # Use utility function to read JSONL
+    for idx, item in enumerate(read_jsonl(file_path)):
+        try:
+            chunk = item.get("content", "").strip()
+
+            # Handle missing metadata gracefully
+            item_metadata = item.get("metadata", {})
+            metadata = {
+                "title": item_metadata.get("title", ""),
+                "url": item_metadata.get("url", ""),
+                "relevant_tickers": ", ".join(item_metadata.get("relevant_tickers", [])) if isinstance(item_metadata.get("relevant_tickers"), list) else item_metadata.get("relevant_tickers", ""),
+                "published_date": item_metadata.get("published_date", "")
+            }
+
             if not chunk:
                 continue
 
@@ -41,6 +52,9 @@ def load_chunks_from_file(file_path: str):
 
             documents.append(Document(page_content=chunk, metadata=metadata))
             ids.append(doc_id)
+        except KeyError as e:
+            logger.warning(f"Skipping item {idx} due to missing key: {e}")
+            continue
 
     return documents, ids
 
@@ -50,7 +64,6 @@ def batch(iterable: list, batch_size: int):
         yield iterable[i:i + batch_size]
 
 
-<<<<<<< HEAD
 def delete_old_articles_from_chroma(
     vectorstore: Chroma,
     cutoff_date: str,
@@ -91,18 +104,16 @@ def delete_old_articles_from_chroma(
         return 0
 
 
-=======
->>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
 def build_chroma_index(
     input_file: str,
     output_path: str,
-    model_name: str = "BAAI/bge-base-en-v1.5",
+    model_name: str | None = None,
     batch_size: int = 32,
 ) -> Chroma:
     documents, ids = load_chunks_from_file(input_file)
     logger.info(f"Loaded {len(documents)} documents from file.")
 
-    embedding_model = HuggingFaceEmbeddings(model_name=model_name)
+    embedding_model = get_embedding_model(model_name)
     os.makedirs(output_path, exist_ok=True)
 
     vectorstore = Chroma(
@@ -133,11 +144,7 @@ def build_chroma_index(
                                     desc="Indexing in batches"):
         vectorstore.add_documents(documents=doc_batch, ids=id_batch)
 
-<<<<<<< HEAD
     # Note: ChromaDB 0.4.24+ auto-persists changes, no need to call persist()
-=======
-    vectorstore.persist()
->>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
     logger.info(f"Added {len(new_documents)} new documents to Chroma DB.")
     return vectorstore
 

@@ -15,11 +15,7 @@ Requires-Dist: fastapi==0.110.0; extra == "api"
 Requires-Dist: uvicorn==0.23.0; extra == "api"
 Requires-Dist: python-dotenv==1.0.0; extra == "api"
 Provides-Extra: ui
-<<<<<<< HEAD
 Requires-Dist: streamlit>=1.32.0; extra == "ui"
-=======
-Requires-Dist: streamlit==1.25.0; extra == "ui"
->>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
 Requires-Dist: requests==2.31.0; extra == "ui"
 Provides-Extra: rag
 Requires-Dist: langchain<0.4,>=0.3.25; extra == "rag"
@@ -123,17 +119,15 @@ After installing in editable mode, you can use these convenient commands:
 finnews-scrape      # Run Scrapy spider
 finnews-chunk       # Build chunks from raw articles
 finnews-embed       # Build/update Chroma index
+finnews-cleanup     # Clean up old articles (selective deletion)
 finnews-api         # Start FastAPI server
 finnews-ui          # Start Streamlit web interface
 ```
 
-<<<<<<< HEAD
 ### Scrapy config location change
 - The former `config/` directory has been removed.
 - `scrapy.cfg` now resides at the repository root. Run Scrapy commands from the repo root (e.g., `scrapy crawl finviz_news`) or set `SCRAPY_SETTINGS_MODULE=finnews.scraper.settings` if running elsewhere.
 
-=======
->>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
 ## Project Architecture
 
 ```
@@ -152,12 +146,7 @@ Financial-News-Agent/
 │   ├── chat_memory/       # Conversation history
 │   └── tickers/           # S&P 500 tickers
 ├── tests/                 # Test suite
-<<<<<<< HEAD
 └── docs/                  # Documentation
-=======
-├── docs/                  # Documentation
-└── config/                # Configuration files
->>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
 ```
 
 📋 **Detailed structure**: See [docs/STRUCTURE.md](docs/STRUCTURE.md)
@@ -178,11 +167,6 @@ Financial-News-Agent/
 - **Streamlit**: User-friendly web interface with session management
 - **FastAPI**: RESTful API for integration with external applications
 
-<<<<<<< HEAD
-=======
-## Configuration
-
->>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
 ### Ticker Management
 The system uses S&P 500 companies by default. Update `data/tickers/tickers.csv` to modify the scope:
 
@@ -198,9 +182,9 @@ All settings are centralized in `src/finnews/common/config.py`:
 |---------|---------|---------------------|
 | **API Key** | None | `OPENAI_API_KEY` |
 | **LLM Model** | `gpt-4o-mini` | `LLM_MODEL` |
+| **Embedding Model** | `BAAI/bge-base-en-v1.5` | `EMBEDDING_MODEL` |
 | **API Port** | 8000 | `API_PORT` |
 | **UI Port** | 8501 | `STREAMLIT_PORT` |
-| **Embedding Model** | `BAAI/bge-base-en-v1.5` | Hardcoded in embedder.py |
 
 📋 **Full configuration guide**: See [docs/RUNBOOK.md](docs/RUNBOOK.md)
 

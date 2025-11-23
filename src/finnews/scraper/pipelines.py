@@ -1,22 +1,15 @@
-import os
 import json
 from finnews.common.config import settings
+from finnews.common.io_utils import ensure_file_dir
+from finnews.scraper.utils import load_existing_urls
 
 class SaveNewsJSONLPipeline:
     def __init__(self):
         self.output_file = str(settings.raw_news)
-        os.makedirs(os.path.dirname(self.output_file), exist_ok=True)
+        ensure_file_dir(self.output_file)
 
-        self.seen_urls = set()
-        if os.path.exists(self.output_file):
-            with open(self.output_file, "r", encoding="utf-8") as f:
-                for line in f:
-                    try:
-                        article = json.loads(line)
-                        if "url" in article:
-                            self.seen_urls.add(article["url"])
-                    except json.JSONDecodeError:
-                        continue
+        # Load existing URLs using utility function
+        self.seen_urls = load_existing_urls(self.output_file)
 
         self.file = None
 

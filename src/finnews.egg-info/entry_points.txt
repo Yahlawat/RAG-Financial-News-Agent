@@ -1,10 +1,7 @@
 [console_scripts]
 finnews-api = finnews.api.main:run
 finnews-chunk = finnews.rag.chunker:main
-<<<<<<< HEAD
 finnews-cleanup = finnews.scripts.cleanup_old_articles:main
-=======
->>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
 finnews-embed = finnews.rag.embedder:main
 finnews-scrape = finnews.scraper.runner:main
 finnews-ui = finnews.ui.app:main

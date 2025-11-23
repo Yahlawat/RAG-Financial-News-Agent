@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     # Secrets / API
     OPENAI_API_KEY: str | None = None
     LLM_MODEL: str = "gpt-4o-mini"
+    EMBEDDING_MODEL: str = "BAAI/bge-base-en-v1.5"
 
     # Network / Ports
     API_HOST: str = "127.0.0.1"
@@ -46,6 +47,10 @@ class Settings(BaseSettings):
     @property
     def llm_model(self) -> str:
         return self.LLM_MODEL
+
+    @property
+    def embedding_model(self) -> str:
+        return self.EMBEDDING_MODEL
 
     @property
     def api_host(self) -> str:

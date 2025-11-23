@@ -81,6 +81,7 @@ After installing in editable mode, you can use these convenient commands:
 finnews-scrape      # Run Scrapy spider
 finnews-chunk       # Build chunks from raw articles
 finnews-embed       # Build/update Chroma index
+finnews-cleanup     # Clean up old articles (selective deletion)
 finnews-api         # Start FastAPI server
 finnews-ui          # Start Streamlit web interface
 ```
@@ -143,9 +144,9 @@ All settings are centralized in `src/finnews/common/config.py`:
 |---------|---------|---------------------|
 | **API Key** | None | `OPENAI_API_KEY` |
 | **LLM Model** | `gpt-4o-mini` | `LLM_MODEL` |
+| **Embedding Model** | `BAAI/bge-base-en-v1.5` | `EMBEDDING_MODEL` |
 | **API Port** | 8000 | `API_PORT` |
 | **UI Port** | 8501 | `STREAMLIT_PORT` |
-| **Embedding Model** | `BAAI/bge-base-en-v1.5` | Hardcoded in embedder.py |
 
 📋 **Full configuration guide**: See [docs/RUNBOOK.md](docs/RUNBOOK.md)
 

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 from finnews.rag.embedder import main as embedder_main
 
 
@@ -16,12 +15,6 @@ def main() -> int:
         print(f"Error during embedding: {e}")
         return 1
 
-=======
-﻿def main() -> int:
-    # TODO: wire to embedding step
-    print("Embed step placeholder")
-    return 0
->>>>>>> 7af5a402772857b0c388489419e38a01f18be89d
 
 if __name__ == "__main__":
     raise SystemExit(main())

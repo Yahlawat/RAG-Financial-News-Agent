@@ -1,26 +1,27 @@
 from typing import Optional
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.schema import Document
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
-import logging
 import math
-import os
 
 from dotenv import load_dotenv
+from finnews.common.logging import get_logger
+from finnews.common.io_utils import ensure_file_dir
+from finnews.rag.embedder import get_embedding_model
+
 load_dotenv()
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 def load_vectorstore(
     persist_directory: str,
-    model_name: str = "BAAI/bge-base-en-v1.5"
+    model_name: str | None = None
 ) -> Chroma:
     logger.info(f"Loading vectorstore from {persist_directory}")
-    os.makedirs(persist_directory, exist_ok=True)
-    embedding_model = HuggingFaceEmbeddings(model_name=model_name)
+    from pathlib import Path
+    Path(persist_directory).mkdir(parents=True, exist_ok=True)
+    embedding_model = get_embedding_model(model_name)
     store = Chroma(
         persist_directory=persist_directory,
         embedding_function=embedding_model
@@ -100,10 +101,9 @@ def add_chat_memory(
     conversation_id: str,
     user_id: str,
     question: str,
-    answer: str,
-    model_name: str = "BAAI/bge-base-en-v1.5"
+    answer: str
 ) -> None:
-    timestamp = datetime.now().isoformat()
+    timestamp = datetime.now(timezone.utc).isoformat()
     suffix = str(uuid4()).split("-")[0] 
 
     if not isinstance(answer, str):

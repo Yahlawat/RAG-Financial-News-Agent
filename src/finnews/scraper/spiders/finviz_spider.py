@@ -1,33 +1,24 @@
 import scrapy
-import os
-import json
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 from finnews.scraper.items import NewsArticleItem
 from finnews.common.config import settings
+from finnews.common.io_utils import ensure_file_dir
+from finnews.scraper.utils import load_existing_urls
 
 class FinVizSpider(scrapy.Spider):
     name = 'finviz_news'
     allowed_domains = ['finviz.com']
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.article_store = str(settings.raw_news)
-        self.existing_urls = set()
-        os.makedirs(os.path.dirname(self.article_store), exist_ok=True)
+        ensure_file_dir(self.article_store)
 
-        # Load known URLs
-        if os.path.exists(self.article_store):
-            with open(self.article_store, 'r', encoding='utf-8') as f:
-                for line in f:
-                    try:
-                        article = json.loads(line)
-                        if 'url' in article:
-                            self.existing_urls.add(article['url'])
-                    except json.JSONDecodeError:
-                        continue
+        # Load known URLs using utility function
+        self.existing_urls = load_existing_urls(self.article_store)
 
         # Load tickers to scrape   
         with open(settings.tickers_csv, "r") as f:
@@ -66,7 +57,7 @@ class FinVizSpider(scrapy.Spider):
                 title=title,
                 url=url,
                 source=source,
-                scraped_at=datetime.utcnow().isoformat(),
+                scraped_at=datetime.now(timezone.utc).isoformat(),
                 published_date=None,
                 body="",
                 main_ticker=ticker,
