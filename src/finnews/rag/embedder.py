@@ -50,6 +50,46 @@ def batch(iterable: list, batch_size: int):
         yield iterable[i:i + batch_size]
 
 
+def delete_old_articles_from_chroma(
+    vectorstore: Chroma,
+    cutoff_date: str,
+) -> int:
+    """
+    Delete articles older than cutoff_date from ChromaDB.
+
+    Args:
+        vectorstore: ChromaDB vector store instance
+        cutoff_date: ISO format date string (e.g., "2024-10-22")
+                    Articles published before this date will be deleted
+
+    Returns:
+        Number of documents deleted
+    """
+    try:
+        # Get all documents with metadata to find those older than cutoff
+        all_docs = vectorstore.get(include=["metadatas"])
+
+        # Find IDs of documents older than cutoff_date
+        old_doc_ids = []
+        for doc_id, metadata in zip(all_docs["ids"], all_docs["metadatas"]):
+            published_date = metadata.get("published_date", "")
+            if published_date and published_date < cutoff_date:
+                old_doc_ids.append(doc_id)
+
+        # Delete old documents
+        if old_doc_ids:
+            vectorstore.delete(ids=old_doc_ids)
+            logger.info(f"Deleted {len(old_doc_ids)} old documents from ChromaDB")
+            return len(old_doc_ids)
+        else:
+            logger.info("No old documents found to delete")
+            return 0
+
+    except Exception as e:
+        logger.error(f"Error deleting old articles: {e}")
+        return 0
+
+
 def build_chroma_index(
     input_file: str,
     output_path: str,
@@ -90,7 +130,7 @@ def build_chroma_index(
                                     desc="Indexing in batches"):
         vectorstore.add_documents(documents=doc_batch, ids=id_batch)
 
-    vectorstore.persist()
+    # Note: ChromaDB 0.4.24+ auto-persists changes, no need to call persist()
     logger.info(f"Added {len(new_documents)} new documents to Chroma DB.")
     return vectorstore
 

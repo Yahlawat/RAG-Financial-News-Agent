@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 import sys
 from pathlib import Path
 from typing import Optional
@@ -11,7 +11,7 @@ def setup_logging(
     console: bool = True
 ) -> None:
     """Set up logging configuration.
-    
+
     Args:
         level: Logging level (default: INFO)
         format_string: Custom format string for log messages
@@ -20,16 +20,16 @@ def setup_logging(
     """
     if format_string is None:
         format_string = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    
+
     handlers = []
-    
+
     if console:
         handlers.append(logging.StreamHandler(sys.stdout))
-    
+
     if log_file:
         log_file.parent.mkdir(parents=True, exist_ok=True)
         handlers.append(logging.FileHandler(log_file))
-    
+
     logging.basicConfig(
         level=level,
         format=format_string,
@@ -39,10 +39,10 @@ def setup_logging(
 
 def get_logger(name: str = 'finnews') -> logging.Logger:
     """Get a logger instance.
-    
+
     Args:
         name: Logger name (default: 'finnews')
-        
+
     Returns:
         Logger instance
     """

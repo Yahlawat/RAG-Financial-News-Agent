@@ -24,7 +24,7 @@ api = [
   "python-dotenv==1.0.0",
 ]
 ui = [
-  "streamlit==1.25.0",
+  "streamlit>=1.32.0",
   "requests==2.31.0",
 ]
 rag = [
@@ -53,10 +53,11 @@ finnews-chunk = "finnews.rag.chunker:main"
 finnews-embed = "finnews.rag.embedder:main"
 finnews-scrape = "finnews.scraper.runner:main"
 finnews-ui = "finnews.ui.app:main"
+finnews-cleanup = "finnews.scripts.cleanup_old_articles:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-packages = ["finnews", "finnews.api", "finnews.ui", "finnews.rag", "finnews.scraper"]
+packages = ["finnews", "finnews.api", "finnews.ui", "finnews.rag", "finnews.scraper", "finnews.scripts"]
 
 [tool.ruff]
 line-length = 100

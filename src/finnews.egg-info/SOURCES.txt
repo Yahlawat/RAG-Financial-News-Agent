@@ -20,8 +20,14 @@ src/finnews/scraper/items.py
 src/finnews/scraper/pipelines.py
 src/finnews/scraper/runner.py
 src/finnews/scraper/settings.py
+src/finnews/scripts/__init__.py
+src/finnews/scripts/chunk.py
+src/finnews/scripts/cleanup_old_articles.py
+src/finnews/scripts/embed.py
+src/finnews/scripts/scrape.py
 src/finnews/ui/__init__.py
 src/finnews/ui/app.py
+src/finnews/ui/conversation_history.py
 src/finnews/ui/session_manager.py
 tests/test_chunker.py
 tests/test_config_aliases.py

@@ -2,6 +2,7 @@
 from typing import List, Optional
 import logging
 import uvicorn
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -13,19 +14,39 @@ from finnews.common.config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
-
 # Vector stores loaded at startup
 article_store = None
 chat_store = None
 
-@app.on_event("startup")
-def init_vectorstores() -> None:
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events."""
+    # Startup: Initialize vector stores
     global article_store, chat_store
     logger.info("Initializing vector stores")
     article_store = load_vectorstore(str(settings.chroma_store))
     chat_store = load_vectorstore(str(settings.chat_memory))
     logger.info("Vector stores initialized")
+
+    yield
+
+    # Shutdown: cleanup if needed
+    logger.info("Shutting down")
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint to verify API and vector stores are ready."""
+    return {
+        "status": "healthy",
+        "article_store_loaded": article_store is not None,
+        "chat_store_loaded": chat_store is not None,
+    }
+
 
 class ChatRequest(BaseModel):
     question: str

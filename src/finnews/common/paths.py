@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 from .config import settings
 
 def ensure_dirs() -> None:
