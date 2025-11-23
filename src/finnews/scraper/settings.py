@@ -29,6 +29,11 @@ ITEM_PIPELINES = {
     'finnews.scraper.pipelines.SaveNewsJSONLPipeline': 300,
 }
 
+# Extensions for progress tracking
+EXTENSIONS = {
+    'finnews.scraper.progress_extension.ProgressTrackerExtension': 100,
+}
+
 # Compatibility settings
 REQUEST_FINGERPRINTER_IMPLEMENTATION = "2.7"
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"

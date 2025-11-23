@@ -1,5 +1,7 @@
 import os
 import sys
+import time
+from datetime import datetime
 from streamlit.web import cli as stcli
 import streamlit as st
 import requests
@@ -12,15 +14,292 @@ from finnews.ui.conversation_history import (
     get_conversation_messages,
     delete_conversation
 )
+from finnews.ui.user_profile import (
+    load_user_profile,
+    add_tickers as add_tickers_to_profile,
+    remove_tickers as remove_tickers_from_profile
+)
 
 
 def api_base() -> str:
     return f"http://{settings.api_host}:{settings.api_port}"
 
 
+def format_time_ago(iso_timestamp: str) -> str:
+    """Format an ISO timestamp as 'X time ago'.
+
+    Args:
+        iso_timestamp: ISO format timestamp string
+
+    Returns:
+        Human-readable time ago string
+    """
+    try:
+        dt = datetime.fromisoformat(iso_timestamp)
+        now = datetime.now()
+        diff = now - dt
+
+        if diff.total_seconds() < 60:
+            return "just now"
+        elif diff.total_seconds() < 3600:
+            minutes = int(diff.total_seconds() / 60)
+            return f"{minutes} minute{'s' if minutes != 1 else ''} ago"
+        elif diff.total_seconds() < 86400:
+            hours = int(diff.total_seconds() / 3600)
+            return f"{hours} hour{'s' if hours != 1 else ''} ago"
+        else:
+            days = int(diff.total_seconds() / 86400)
+            return f"{days} day{'s' if days != 1 else ''} ago"
+    except (ValueError, TypeError, AttributeError):
+        return "unknown"
+
+
+def render_portfolio_section(user_id: str):
+    """Render the portfolio ticker management section.
+
+    Args:
+        user_id: The user's ID
+    """
+    st.subheader("📊 My Portfolio Tickers")
+
+    # Load user profile
+    profile = load_user_profile(user_id)
+
+    # Get ticker metadata
+    if profile.portfolio_tickers:
+        with st.spinner("Loading ticker metadata..."):
+            try:
+                response = requests.post(
+                    f"{api_base()}/scrape/tickers/metadata",
+                    json={"tickers": profile.portfolio_tickers},
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    metadata = response.json().get("metadata", [])
+                    metadata_dict = {item["ticker"]: item for item in metadata}
+                else:
+                    metadata_dict = {}
+            except requests.RequestException:
+                metadata_dict = {}
+
+        # Display current tickers
+        for ticker in profile.portfolio_tickers:
+            col1, col2, col3 = st.columns([3, 4, 1])
+
+            with col1:
+                st.markdown(f"**{ticker}**")
+
+            with col2:
+                # Show last scraped info
+                if ticker in metadata_dict:
+                    meta = metadata_dict[ticker]
+                    if meta.get("never_scraped"):
+                        st.caption("Never scraped")
+                    else:
+                        last_scraped = meta.get("last_scraped")
+                        if last_scraped:
+                            time_ago = format_time_ago(last_scraped)
+                            st.caption(f"Scraped {time_ago}")
+
+            with col3:
+                # Remove button
+                if st.button("✖", key=f"remove_{ticker}"):
+                    remove_tickers_from_profile(user_id, [ticker])
+                    st.rerun()
+    else:
+        st.info("No tickers in portfolio yet. Add some below!")
+
+    # Add ticker input
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        new_ticker = st.text_input(
+            "Add ticker",
+            placeholder="AAPL",
+            key="new_ticker_input",
+            label_visibility="collapsed"
+        )
+    with col2:
+        if st.button("➕ Add", use_container_width=True):
+            # Validate ticker input
+            if new_ticker:
+                # Strip whitespace and convert to uppercase
+                cleaned_ticker = new_ticker.strip().upper()
+
+                # Check if not empty after stripping
+                if not cleaned_ticker:
+                    st.error("Ticker cannot be empty or just whitespace")
+                # Check if ticker is alphanumeric (allow dots for some tickers like BRK.A)
+                elif not all(c.isalnum() or c == '.' for c in cleaned_ticker):
+                    st.error("Ticker must contain only letters, numbers, and dots")
+                # Check reasonable length (most tickers are 1-5 characters)
+                elif len(cleaned_ticker) > 10:
+                    st.error("Ticker is too long (max 10 characters)")
+                else:
+                    add_tickers_to_profile(user_id, [cleaned_ticker])
+                    st.rerun()
+
+
+def render_scraping_section(user_id: str):
+    """Render the scraping controls section.
+
+    Args:
+        user_id: The user's ID
+    """
+    st.subheader("🔄 Scraping Controls")
+
+    # Check scrape status
+    try:
+        status_response = requests.get(f"{api_base()}/scrape/status", timeout=5)
+        if status_response.status_code == 200:
+            status_data = status_response.json()
+            scrape_status = status_data.get("status", "idle")
+            pipeline_stage = status_data.get("pipeline_stage", "idle")
+            stage_message = status_data.get("stage_message", "Ready")
+            started_at = status_data.get("started_at")
+            completed = status_data.get("completed", 0)
+            total = status_data.get("total", 0)
+            articles_found = status_data.get("articles_found", 0)
+            time_elapsed = status_data.get("time_elapsed_seconds", 0)
+
+            # Auto-reset stale completed states (older than 60 seconds)
+            # This handles cases where the UI didn't reset after showing completion
+            if (scrape_status == "completed" or pipeline_stage == "completed") and started_at:
+                try:
+                    start_time = datetime.fromisoformat(started_at)
+                    age_seconds = (datetime.now() - start_time).total_seconds()
+                    if age_seconds > 60:
+                        # Reset stale completed state
+                        requests.post(f"{api_base()}/scrape/reset", timeout=5)
+                        scrape_status = "idle"
+                        pipeline_stage = "idle"
+                        stage_message = "Ready"
+                except Exception:
+                    pass  # If we can't parse or reset, just continue
+        else:
+            scrape_status = "idle"
+            pipeline_stage = "idle"
+            stage_message = "Ready"
+            started_at = None
+            completed = 0
+            total = 0
+            articles_found = 0
+            time_elapsed = 0
+    except (requests.RequestException, requests.ConnectionError, requests.Timeout) as e:
+        # API is unavailable or request failed - default to idle state
+        scrape_status = "idle"
+        pipeline_stage = "idle"
+        stage_message = "Ready"
+        started_at = None
+        completed = 0
+        total = 0
+        articles_found = 0
+        time_elapsed = 0
+
+    if scrape_status == "running":
+        # Show progress with pipeline stage info
+        # Choose icon based on stage
+        if pipeline_stage == "scraping":
+            icon = "🔄"
+        elif pipeline_stage in ["chunking", "chunking_complete"]:
+            icon = "⚙️"
+        elif pipeline_stage == "embedding":
+            icon = "🧠"
+        else:
+            icon = "🔄"
+
+        st.info(f"{icon} {stage_message}")
+
+        # Show progress bar for scraping stage
+        if pipeline_stage == "scraping" and total > 0:
+            progress = completed / total
+            st.progress(progress)
+            st.caption(
+                f"Progress: {completed}/{total} tickers • {articles_found} articles • "
+                f"{int(time_elapsed)}s elapsed"
+            )
+        # Show indeterminate progress for post-processing stages
+        elif pipeline_stage in ["chunking", "chunking_complete", "embedding"]:
+            st.progress(0.5)  # Show half-filled progress bar
+            st.caption(f"Processing... • {int(time_elapsed)}s total elapsed")
+        else:
+            st.caption("Initializing...")
+
+        # Guard against infinite rerun loop
+        # Track consecutive reruns in session state
+        if "scrape_rerun_count" not in st.session_state:
+            st.session_state.scrape_rerun_count = 0
+
+        st.session_state.scrape_rerun_count += 1
+
+        # Safety limit: 600 reruns = 30 minutes at 3 seconds per iteration
+        # This aligns with the backend's 30-minute timeout
+        if st.session_state.scrape_rerun_count > 600:
+            st.error("⚠️ Scraping has been running for over 30 minutes. Resetting status.")
+            try:
+                requests.post(f"{api_base()}/scrape/reset", timeout=5)
+            except Exception:
+                pass
+            st.session_state.scrape_rerun_count = 0
+            st.rerun()
+        else:
+            # Auto-refresh every 3 seconds
+            time.sleep(3)
+            st.rerun()
+
+    elif scrape_status == "completed" or pipeline_stage == "completed":
+        # Show completion message
+        st.success("✅ Pipeline complete! Articles ready for querying")
+        # Reset status after showing message
+        try:
+            requests.post(f"{api_base()}/scrape/reset", timeout=5)
+        except Exception:
+            pass  # Silently fail - status will be reset on next UI load if needed
+
+    else:
+        # Reset rerun counter when not running
+        if "scrape_rerun_count" in st.session_state:
+            st.session_state.scrape_rerun_count = 0
+
+        # Show scrape button
+        profile = load_user_profile(user_id)
+        if not profile.portfolio_tickers:
+            st.warning("Add tickers to your portfolio first!")
+        else:
+            if st.button("🔄 Scrape Now", use_container_width=True):
+                try:
+                    response = requests.post(
+                        f"{api_base()}/scrape/start",
+                        json={"user_id": user_id},
+                        timeout=10
+                    )
+                    if response.status_code == 200:
+                        result = response.json()
+                        if result.get("status") == "started":
+                            st.success(f"Started scraping {len(result.get('tickers', []))} tickers!")
+                            time.sleep(1)
+                            st.rerun()
+                        elif result.get("status") == "already_running":
+                            st.warning("A scraping job is already in progress")
+                    else:
+                        st.error(f"Failed to start scraping: {response.text}")
+                except Exception as e:
+                    st.error(f"Error starting scrape: {e}")
+
+
 def render_sidebar(user_id: str, current_conversation_id: str):
     """Render the sidebar with conversation history."""
     with st.sidebar:
+        # Portfolio ticker management
+        render_portfolio_section(user_id)
+
+        st.divider()
+
+        # Scraping controls
+        render_scraping_section(user_id)
+
+        st.divider()
+
+        # Chat history
         st.title("💬 Chat History")
 
         # New Chat button
@@ -121,13 +400,6 @@ def run():
     else:
         st.info("👋 Start a new conversation! Ask me anything about financial news.")
 
-    # Ticker input (optional filter)
-    with st.expander("⚙️ Advanced Options"):
-        tickers_input = st.text_input(
-            "Filter by Tickers (optional, comma-separated)",
-            placeholder="AAPL, TSLA, MSFT"
-        )
-
     # Chat input
     user_question = st.chat_input("Ask about financial news...")
 
@@ -139,15 +411,12 @@ def run():
         with st.chat_message("user"):
             st.markdown(user_question)
 
-        # Prepare API request
-        tickers = [t.strip().upper() for t in tickers_input.split(",") if t.strip()] if tickers_input else None
+        # Prepare API request (portfolio tickers are auto-loaded in API)
         payload = {
             "question": user_question,
             "user_id": user_id,
             "conversation_id": conversation_id,
         }
-        if tickers:
-            payload["tickers"] = tickers
 
         # Call API and display response
         with st.chat_message("assistant"):

@@ -11,7 +11,7 @@ class FinVizSpider(scrapy.Spider):
     name = 'finviz_news'
     allowed_domains = ['finviz.com']
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, tickers=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.article_store = str(settings.raw_news)
@@ -20,9 +20,16 @@ class FinVizSpider(scrapy.Spider):
         # Load known URLs using utility function
         self.existing_urls = load_existing_urls(self.article_store)
 
-        # Load tickers to scrape   
-        with open(settings.tickers_csv, "r") as f:
-            self.tickers = [line.strip() for line in f if line.strip()]
+        # Use provided tickers or load from CSV
+        if tickers:
+            # Normalize tickers to uppercase and remove duplicates
+            self.tickers = list(set(t.strip().upper() for t in tickers if t.strip()))
+            self.logger.info(f"Using {len(self.tickers)} custom tickers")
+        else:
+            # Load tickers from CSV (backwards compatibility)
+            with open(settings.tickers_csv, "r") as f:
+                self.tickers = [line.strip() for line in f if line.strip()]
+            self.logger.info(f"Loaded {len(self.tickers)} tickers from CSV")
 
     def start_requests(self):
         """

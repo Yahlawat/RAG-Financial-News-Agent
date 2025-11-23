@@ -1,0 +1,30 @@
+{
+  "tickers": {
+    "AAPL": {
+      "last_scraped": "2025-11-23T16:03:05.213696",
+      "articles_count": 1
+    },
+    "NVDA": {
+      "last_scraped": "2025-11-23T16:03:05.203820",
+      "articles_count": 3
+    },
+    "EPR": {
+      "last_scraped": "2025-11-23T14:08:42.742119",
+      "articles_count": 100
+    }
+  },
+  "current_scrape": {
+    "status": "idle",
+    "started_at": null,
+    "tickers_in_progress": [],
+    "progress": {
+      "completed": 0,
+      "total": 0
+    },
+    "articles_found": 0,
+    "pipeline_stage": "idle",
+    "chunking_started_at": null,
+    "embedding_started_at": null,
+    "total_articles_scraped": 0
+  }
+}

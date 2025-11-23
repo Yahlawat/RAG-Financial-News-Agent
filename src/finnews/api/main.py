@@ -10,6 +10,8 @@ from pydantic import BaseModel
 from finnews.rag.retriever import load_vectorstore
 from finnews.rag.rag_chain import rag_chat
 from finnews.common.config import settings
+from finnews.api.scraper_endpoints import router as scraper_router
+from finnews.ui.user_profile import get_portfolio_tickers
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -37,6 +39,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# Include scraper endpoints router
+app.include_router(scraper_router)
+
 
 @app.get("/health")
 async def health_check():
@@ -61,12 +66,20 @@ async def chat_endpoint(req: ChatRequest):
     logger.info(
         "Chat request from user %s in conversation %s", req.user_id, req.conversation_id
     )
+
+    # Auto-load user's portfolio tickers if not explicitly provided
+    target_tickers = req.tickers
+    if not target_tickers:
+        target_tickers = get_portfolio_tickers(req.user_id)
+        if target_tickers:
+            logger.info(f"Using portfolio tickers for user {req.user_id}: {target_tickers}")
+
     try:
         response = rag_chat(
             question=req.question,
             conversation_id=req.conversation_id,
             user_id=req.user_id,
-            target_tickers=req.tickers,
+            target_tickers=target_tickers,
             top_k=req.top_k,
             chat_k=req.chat_k,
             article_store=article_store,

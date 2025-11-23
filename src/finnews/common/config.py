@@ -16,7 +16,13 @@ class Settings(BaseSettings):
     API_HOST: str = "127.0.0.1"
     API_PORT: int = 8000
     STREAMLIT_PORT: int = 8501
-    
+
+    # Pipeline / Scraping Settings
+    SCRAPE_TIMEOUT_PER_TICKER: int = 180  # seconds per ticker (3 minutes)
+    SCRAPE_TIMEOUT_BUFFER: int = 300  # additional buffer in seconds (5 minutes)
+    SCRAPE_MIN_TIMEOUT: int = 1800  # minimum timeout in seconds (30 minutes)
+    AUTO_PROCESS_PIPELINE: bool = True  # automatically run chunking + embedding after scraping
+
     # Add validation for ports
     @field_validator('API_PORT', 'STREAMLIT_PORT')
     @classmethod
@@ -30,11 +36,13 @@ class Settings(BaseSettings):
     CHAT_MEMORY_DIR: Path = ROOT / "data" / "chat_memory"
     PROCESSED_CHUNKS_DIR: Path = ROOT / "data" / "processed_chunks"
     TICKERS_DIR: Path = ROOT / "data" / "tickers"
+    USER_PROFILES_DIR: Path = ROOT / "data" / "user_profiles"
 
     # Files
     RAW_NEWS_PATH: Path = ROOT / "data" / "raw_news" / "articles.jsonl"
     PROCESSED_CHUNKS_PATH: Path = ROOT / "data" / "processed_chunks" / "chunked_articles.jsonl"
     CHAT_SESSIONS_FILE: Path = ROOT / "data" / "chat_sessions" / "chat_sessions.json"
+    SCRAPE_METADATA_FILE: Path = ROOT / "data" / "scrape_metadata.json"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
@@ -87,6 +95,14 @@ class Settings(BaseSettings):
     @property
     def chat_sessions(self) -> Path:
         return self.CHAT_SESSIONS_FILE
+
+    @property
+    def user_profiles_dir(self) -> Path:
+        return self.USER_PROFILES_DIR
+
+    @property
+    def scrape_metadata_file(self) -> Path:
+        return self.SCRAPE_METADATA_FILE
 
 
 settings = Settings()
