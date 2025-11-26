@@ -58,9 +58,6 @@ class ScrapeStatus:
         total: int = 0,
         articles_found: int = 0,
         pipeline_stage: str = "idle",
-        chunking_started_at: Optional[str] = None,
-        embedding_started_at: Optional[str] = None,
-        total_articles_scraped: int = 0,
     ):
         self.status = status  # idle, running, completed, error
         self.started_at = started_at
@@ -70,9 +67,6 @@ class ScrapeStatus:
         self.articles_found = articles_found
         # Pipeline stage: "idle", "scraping", "chunking", "embedding", "completed", "error"
         self.pipeline_stage = pipeline_stage
-        self.chunking_started_at = chunking_started_at
-        self.embedding_started_at = embedding_started_at
-        self.total_articles_scraped = total_articles_scraped
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""
@@ -86,9 +80,6 @@ class ScrapeStatus:
             },
             "articles_found": self.articles_found,
             "pipeline_stage": self.pipeline_stage,
-            "chunking_started_at": self.chunking_started_at,
-            "embedding_started_at": self.embedding_started_at,
-            "total_articles_scraped": self.total_articles_scraped,
         }
 
     @classmethod
@@ -103,9 +94,6 @@ class ScrapeStatus:
             total=progress.get("total", 0),
             articles_found=data.get("articles_found", 0),
             pipeline_stage=data.get("pipeline_stage", "idle"),
-            chunking_started_at=data.get("chunking_started_at"),
-            embedding_started_at=data.get("embedding_started_at"),
-            total_articles_scraped=data.get("total_articles_scraped", 0),
         )
 
 
@@ -115,7 +103,7 @@ def _read_metadata() -> dict:
     Returns:
         Dictionary with 'tickers' and 'current_scrape' keys
     """
-    metadata_path = str(settings.scrape_metadata_file)
+    metadata_path = str(settings.SCRAPE_METADATA_FILE)
     data = read_json(metadata_path)
 
     if not data:
@@ -134,7 +122,7 @@ def _write_metadata(data: dict) -> None:
     Args:
         data: Dictionary with 'tickers' and 'current_scrape' keys
     """
-    metadata_path = str(settings.scrape_metadata_file)
+    metadata_path = str(settings.SCRAPE_METADATA_FILE)
     write_json(metadata_path, data)
 
 
@@ -232,9 +220,6 @@ def start_scrape(tickers: List[str]) -> None:
             },
             "articles_found": 0,
             "pipeline_stage": "scraping",
-            "chunking_started_at": None,
-            "embedding_started_at": None,
-            "total_articles_scraped": 0,
         }
 
         _write_metadata(data)
@@ -298,8 +283,6 @@ def start_chunking(total_articles: int = 0) -> None:
         current_scrape = data.get("current_scrape", {})
 
         current_scrape["pipeline_stage"] = "chunking"
-        current_scrape["chunking_started_at"] = datetime.now().isoformat()
-        current_scrape["total_articles_scraped"] = total_articles
         current_scrape["status"] = "running"
         data["current_scrape"] = current_scrape
 
@@ -327,7 +310,6 @@ def start_embedding() -> None:
         current_scrape = data.get("current_scrape", {})
 
         current_scrape["pipeline_stage"] = "embedding"
-        current_scrape["embedding_started_at"] = datetime.now().isoformat()
         current_scrape["status"] = "running"
         data["current_scrape"] = current_scrape
 

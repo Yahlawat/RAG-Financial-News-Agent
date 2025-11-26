@@ -22,7 +22,7 @@ from finnews.ui.user_profile import (
 
 
 def api_base() -> str:
-    return f"http://{settings.api_host}:{settings.api_port}"
+    return f"http://{settings.API_HOST}:{settings.API_PORT}"
 
 
 def format_time_ago(iso_timestamp: str) -> str:
@@ -120,21 +120,9 @@ def render_portfolio_section(user_id: str):
         )
     with col2:
         if st.button("➕ Add", use_container_width=True):
-            # Validate ticker input
             if new_ticker:
-                # Strip whitespace and convert to uppercase
                 cleaned_ticker = new_ticker.strip().upper()
-
-                # Check if not empty after stripping
-                if not cleaned_ticker:
-                    st.error("Ticker cannot be empty or just whitespace")
-                # Check if ticker is alphanumeric (allow dots for some tickers like BRK.A)
-                elif not all(c.isalnum() or c == '.' for c in cleaned_ticker):
-                    st.error("Ticker must contain only letters, numbers, and dots")
-                # Check reasonable length (most tickers are 1-5 characters)
-                elif len(cleaned_ticker) > 10:
-                    st.error("Ticker is too long (max 10 characters)")
-                else:
+                if cleaned_ticker:
                     add_tickers_to_profile(user_id, [cleaned_ticker])
                     st.rerun()
 
@@ -160,21 +148,6 @@ def render_scraping_section(user_id: str):
             total = status_data.get("total", 0)
             articles_found = status_data.get("articles_found", 0)
             time_elapsed = status_data.get("time_elapsed_seconds", 0)
-
-            # Auto-reset stale completed states (older than 60 seconds)
-            # This handles cases where the UI didn't reset after showing completion
-            if (scrape_status == "completed" or pipeline_stage == "completed") and started_at:
-                try:
-                    start_time = datetime.fromisoformat(started_at)
-                    age_seconds = (datetime.now() - start_time).total_seconds()
-                    if age_seconds > 60:
-                        # Reset stale completed state
-                        requests.post(f"{api_base()}/scrape/reset", timeout=5)
-                        scrape_status = "idle"
-                        pipeline_stage = "idle"
-                        stage_message = "Ready"
-                except Exception:
-                    pass  # If we can't parse or reset, just continue
         else:
             scrape_status = "idle"
             pipeline_stage = "idle"
@@ -184,7 +157,7 @@ def render_scraping_section(user_id: str):
             total = 0
             articles_found = 0
             time_elapsed = 0
-    except (requests.RequestException, requests.ConnectionError, requests.Timeout) as e:
+    except requests.RequestException as e:
         # API is unavailable or request failed - default to idle state
         scrape_status = "idle"
         pipeline_stage = "idle"
@@ -224,27 +197,9 @@ def render_scraping_section(user_id: str):
         else:
             st.caption("Initializing...")
 
-        # Guard against infinite rerun loop
-        # Track consecutive reruns in session state
-        if "scrape_rerun_count" not in st.session_state:
-            st.session_state.scrape_rerun_count = 0
-
-        st.session_state.scrape_rerun_count += 1
-
-        # Safety limit: 600 reruns = 30 minutes at 3 seconds per iteration
-        # This aligns with the backend's 30-minute timeout
-        if st.session_state.scrape_rerun_count > 600:
-            st.error("⚠️ Scraping has been running for over 30 minutes. Resetting status.")
-            try:
-                requests.post(f"{api_base()}/scrape/reset", timeout=5)
-            except Exception:
-                pass
-            st.session_state.scrape_rerun_count = 0
-            st.rerun()
-        else:
-            # Auto-refresh every 3 seconds
-            time.sleep(3)
-            st.rerun()
+        # Auto-refresh every 3 seconds
+        time.sleep(3)
+        st.rerun()
 
     elif scrape_status == "completed" or pipeline_stage == "completed":
         # Show completion message
@@ -256,10 +211,6 @@ def render_scraping_section(user_id: str):
             pass  # Silently fail - status will be reset on next UI load if needed
 
     else:
-        # Reset rerun counter when not running
-        if "scrape_rerun_count" in st.session_state:
-            st.session_state.scrape_rerun_count = 0
-
         # Show scrape button
         profile = load_user_profile(user_id)
         if not profile.portfolio_tickers:
@@ -461,7 +412,7 @@ def main() -> None:
     script = os.path.abspath(__file__)
     args = [
         "streamlit", "run", script,
-        "--server.port", str(settings.streamlit_port),
+        "--server.port", str(settings.STREAMLIT_PORT),
         "--server.headless", "true",
     ]
     sys.argv = args

@@ -62,8 +62,8 @@ def process_jsonl(input_path: str, output_path: str):
 
 def main() -> None:
     process_jsonl(
-        input_path=str(settings.raw_news),
-        output_path=str(settings.processed_chunks),
+        input_path=str(settings.RAW_NEWS_PATH),
+        output_path=str(settings.PROCESSED_CHUNKS_PATH),
     )
 
 

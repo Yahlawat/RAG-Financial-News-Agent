@@ -22,7 +22,7 @@ def get_embedding_model(model_name: str | None = None) -> HuggingFaceEmbeddings:
         HuggingFaceEmbeddings instance
     """
     if model_name is None:
-        model_name = settings.embedding_model
+        model_name = settings.EMBEDDING_MODEL
     return HuggingFaceEmbeddings(model_name=model_name)
 
 
@@ -151,8 +151,8 @@ def build_chroma_index(
 
 def main() -> None:
     build_chroma_index(
-        input_file=str(settings.processed_chunks),
-        output_path=str(settings.chroma_store),
+        input_file=str(settings.PROCESSED_CHUNKS_PATH),
+        output_path=str(settings.CHROMA_DIR),
     )
 
 

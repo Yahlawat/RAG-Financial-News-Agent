@@ -14,7 +14,7 @@ class FinVizSpider(scrapy.Spider):
     def __init__(self, tickers=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.article_store = str(settings.raw_news)
+        self.article_store = str(settings.RAW_NEWS_PATH)
         ensure_file_dir(self.article_store)
 
         # Load known URLs using utility function
@@ -27,7 +27,7 @@ class FinVizSpider(scrapy.Spider):
             self.logger.info(f"Using {len(self.tickers)} custom tickers")
         else:
             # Load tickers from CSV (backwards compatibility)
-            with open(settings.tickers_csv, "r") as f:
+            with open(settings.TICKERS_DIR / "tickers.csv", "r") as f:
                 self.tickers = [line.strip() for line in f if line.strip()]
             self.logger.info(f"Loaded {len(self.tickers)} tickers from CSV")
 

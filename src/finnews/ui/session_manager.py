@@ -4,7 +4,7 @@ from typing import Optional
 from finnews.common.config import settings
 from finnews.common.io_utils import read_json, write_json, ensure_file_dir
 
-SESSION_FILE = str(settings.chat_sessions)
+SESSION_FILE = str(settings.CHAT_SESSIONS_FILE)
 logger = logging.getLogger(__name__)
 
 
@@ -24,11 +24,7 @@ def load_session(user_id: str) -> str:
     data = _read_session_data()
 
     if user_id in data:
-        session_value = data[user_id]
-        # Handle both old format (dict) and new format (string)
-        if isinstance(session_value, dict):
-            return session_value.get("conversation_id", str(uuid.uuid4()))
-        return session_value
+        return data[user_id]
 
     conversation_id = str(uuid.uuid4())
     data[user_id] = conversation_id
@@ -63,15 +59,5 @@ def get_active_conversation(user_id: str) -> Optional[str]:
     """
     data = _read_session_data()
     if user_id in data:
-        session_value = data[user_id]
-        if isinstance(session_value, dict):
-            return session_value.get("conversation_id")
-        return session_value
+        return data[user_id]
     return None
-
-
-def save_session(user_id: str, conversation_id: str) -> None:
-    """Persist conversation_id for a user."""
-    data = _read_session_data()
-    data[user_id] = conversation_id
-    _write_session_data(data)

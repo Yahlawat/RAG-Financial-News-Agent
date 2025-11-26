@@ -5,7 +5,7 @@ from finnews.scraper.utils import load_existing_urls
 
 class SaveNewsJSONLPipeline:
     def __init__(self):
-        self.output_file = str(settings.raw_news)
+        self.output_file = str(settings.RAW_NEWS_PATH)
         ensure_file_dir(self.output_file)
 
         # Load existing URLs using utility function

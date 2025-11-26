@@ -181,6 +181,17 @@ async def get_scrape_status_endpoint():
     )
 
 
+STAGE_MESSAGES = {
+    "idle": "Ready to scrape",
+    "scraping": "Scraping articles...",
+    "chunking": "Processing article chunks...",
+    "chunking_complete": "Processing article chunks...",
+    "embedding": "Generating embeddings...",
+    "completed": "Pipeline complete! Articles ready for querying",
+    "error": "Pipeline encountered an error",
+}
+
+
 def _get_stage_message(status) -> str:
     """Generate a human-readable message for the current pipeline stage.
 
@@ -192,25 +203,14 @@ def _get_stage_message(status) -> str:
     """
     stage = status.pipeline_stage
 
-    if stage == "idle":
-        return "Ready to scrape"
-    elif stage == "scraping":
-        if status.total > 0:
-            return f"Scraping articles... {status.completed}/{status.total} tickers"
-        return "Scraping articles..."
-    elif stage == "chunking" or stage == "chunking_complete":
-        return "Processing article chunks..."
-    elif stage == "embedding":
-        return "Generating embeddings..."
-    elif stage == "completed":
-        return "Pipeline complete! Articles ready for querying"
-    elif stage.startswith("error_"):
+    if stage.startswith("error_"):
         error_stage = stage.replace("error_", "")
         return f"Error in {error_stage} stage"
-    elif stage == "error":
-        return "Pipeline encountered an error"
-    else:
-        return f"Status: {stage}"
+
+    msg = STAGE_MESSAGES.get(stage, f"Status: {stage}")
+    if stage == "scraping" and status.total > 0:
+        msg = f"Scraping articles... {status.completed}/{status.total} tickers"
+    return msg
 
 
 @router.post("/tickers/metadata", response_model=TickerMetadataResponse)
@@ -225,22 +225,15 @@ async def get_tickers_metadata_endpoint(request: TickerMetadataRequest):
     """
     metadata_dict = get_tickers_metadata(request.tickers)
 
-    items = []
-    for ticker, metadata in metadata_dict.items():
-        if metadata:
-            items.append(TickerMetadataItem(
-                ticker=ticker,
-                last_scraped=metadata.last_scraped,
-                articles_count=metadata.articles_count,
-                never_scraped=False
-            ))
-        else:
-            items.append(TickerMetadataItem(
-                ticker=ticker,
-                last_scraped=None,
-                articles_count=0,
-                never_scraped=True
-            ))
+    items = [
+        TickerMetadataItem(
+            ticker=ticker,
+            last_scraped=metadata.last_scraped if metadata else None,
+            articles_count=metadata.articles_count if metadata else 0,
+            never_scraped=not bool(metadata)
+        )
+        for ticker, metadata in metadata_dict.items()
+    ]
 
     return TickerMetadataResponse(metadata=items)
 

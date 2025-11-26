@@ -35,9 +35,9 @@ def rag_chat(
 ) -> dict:
     logger.info("Processing question for conversation %s", conversation_id)
     if article_store is None:
-        article_store = load_vectorstore(str(settings.chroma_store))
+        article_store = load_vectorstore(str(settings.CHROMA_DIR))
     if chat_store is None:
-        chat_store = load_vectorstore(str(settings.chat_memory))
+        chat_store = load_vectorstore(str(settings.CHAT_MEMORY_DIR))
 
     past_qas = retrieve_chat_memory(chat_store, conversation_id, query=question, k=chat_k)
     chat_context = "\n\n".join(doc.page_content for doc in past_qas) if past_qas else ""
@@ -68,27 +68,13 @@ def rag_chat(
         Your response:"""
     )
 
-    api_key = settings.openai_api_key or os.getenv("OPENAI_API_KEY")
+    api_key = settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY")
 
-    # Lazy import to avoid hard dependency during tests; provide fallback
-    llm = None
-    if api_key:
-        try:
-            from langchain_openai import ChatOpenAI  # type: ignore
-            llm = ChatOpenAI(model=settings.llm_model, temperature=0.0, api_key=api_key)
-        except Exception:
-            llm = None
-    if llm is None:
-        class _DummyLLM:
-            def __ror__(self, other):
-                class _C:
-                    def invoke(self_inner, _):
-                        class _R:
-                            content = "dummy answer"
-                        return _R()
-                return _C()
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY is required but not set in config or environment")
 
-        llm = _DummyLLM()
+    from langchain_openai import ChatOpenAI  # type: ignore
+    llm = ChatOpenAI(model=settings.LLM_MODEL, temperature=0.0, api_key=api_key)
 
     chain = (
         {
@@ -120,28 +106,14 @@ def rag_chat(
 
     sources = []
     for doc in news_docs:
-        title = str(doc.metadata.get("title", "")).strip()
-        url = str(doc.metadata.get("url", "")).strip()
-        published_str = str(doc.metadata.get("published_date", ""))
-        published_str = published_str.strip() if published_str else ""
-
-        published_date = None
-        if published_str:
-            try:
-                published_date = datetime.fromisoformat(published_str).date().isoformat()
-            except ValueError:
-                pass
-
-        if title and url and published_date:
-            sources.append({"title": title, "url": url, "published_date": published_date})
-        elif title and url:
-            sources.append(
-                {
-                    "title": title,
-                    "url": url,
-                    "published_date": "(published_date not available)",
-                }
-            )
+        source = {
+            "title": doc.metadata.get("title", ""),
+            "url": doc.metadata.get("url", ""),
+        }
+        if pub_date := doc.metadata.get("published_date"):
+            source["published_date"] = pub_date
+        if source["title"] and source["url"]:
+            sources.append(source)
 
     return {
         "conversation_id": conversation_id,

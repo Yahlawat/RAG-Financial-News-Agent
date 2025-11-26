@@ -55,7 +55,7 @@ def get_user_profile_path(user_id: str) -> str:
     Returns:
         Absolute path to the user's profile JSON file
     """
-    return str(settings.user_profiles_dir / f"{user_id}_profile.json")
+    return str(settings.USER_PROFILES_DIR / f"{user_id}_profile.json")
 
 
 def load_user_profile(user_id: str) -> UserProfile:

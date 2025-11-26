@@ -74,27 +74,15 @@ def article_chunk_retriever(
     top_n: int = 5
 ) -> list[Document]:
     logger.info("Retrieving articles for query: %s", query)
-    
-    if not query or not query.strip():
-        logger.warning("Empty query provided")
-        return []
-    
-    try:
-        search_kwargs = {"k": 15}
-        retriever = vectorstore.as_retriever(search_kwargs=search_kwargs)
-        docs = retriever.invoke(query)
-        logger.debug("Retrieved %d documents", len(docs))
-        
-        if not docs:
-            logger.warning("No documents retrieved for query: %s", query)
-            return []
 
-        reranked_docs = article_chunk_reranker(docs, target_tickers=target_tickers)
-        logger.info("Returning top %d documents", top_n)
-        return reranked_docs[:top_n]
-    except Exception as e:
-        logger.error("Error retrieving documents: %s", e)
-        return []
+    search_kwargs = {"k": 15}
+    retriever = vectorstore.as_retriever(search_kwargs=search_kwargs)
+    docs = retriever.invoke(query)
+    logger.debug("Retrieved %d documents", len(docs))
+
+    reranked_docs = article_chunk_reranker(docs, target_tickers=target_tickers)
+    logger.info("Returning top %d documents", top_n)
+    return reranked_docs[:top_n]
 
 def add_chat_memory(
     chat_store: Chroma,
@@ -104,10 +92,7 @@ def add_chat_memory(
     answer: str
 ) -> None:
     timestamp = datetime.now(timezone.utc).isoformat()
-    suffix = str(uuid4()).split("-")[0] 
-
-    if not isinstance(answer, str):
-        answer = getattr(answer, "content", str(answer))
+    suffix = str(uuid4()).split("-")[0]
 
     user_doc = Document(
         page_content=question,

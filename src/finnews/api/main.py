@@ -27,8 +27,8 @@ async def lifespan(app: FastAPI):
     # Startup: Initialize vector stores
     global article_store, chat_store
     logger.info("Initializing vector stores")
-    article_store = load_vectorstore(str(settings.chroma_store))
-    chat_store = load_vectorstore(str(settings.chat_memory))
+    article_store = load_vectorstore(str(settings.CHROMA_DIR))
+    chat_store = load_vectorstore(str(settings.CHAT_MEMORY_DIR))
     logger.info("Vector stores initialized")
 
     yield
@@ -92,6 +92,6 @@ async def chat_endpoint(req: ChatRequest):
     return response
 
 
-def run(host: str = settings.api_host, port: int = settings.api_port):
+def run(host: str = settings.API_HOST, port: int = settings.API_PORT):
     """Run the FastAPI app with uvicorn."""
     uvicorn.run(app, host=host, port=port)

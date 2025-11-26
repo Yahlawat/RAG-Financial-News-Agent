@@ -42,7 +42,9 @@ rag = [
   "python-dotenv==1.0.0",
 ]
 dev = [
-  "pytest==8.0.0",
+  "pytest>=8.0.0",
+  "pytest-cov>=4.1.0",
+  "pytest-asyncio>=0.23.0",
   "ipython>=8.12,<9.0",
   "ipykernel==6.25.0",
 ]
@@ -72,3 +74,10 @@ target-version = ["py310"]
 pythonpath = ["src"]
 addopts = "-q"
 testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+# To enable coverage reporting, install pytest-cov and uncomment:
+# addopts = "-q --cov=finnews --cov-report=term-missing --cov-report=html"
