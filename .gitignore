@@ -66,3 +66,4 @@ data/user_profiles/*.json
 
 # ----------------------------------------
 .gitignore
+drafts/
