@@ -1,10 +1,9 @@
 import json
-import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Dict, Optional
-from finnews.common.config import settings
+from typing import Dict, List, Optional
 
+from finnews.common.config import settings
 
 CONVERSATIONS_DIR = settings.CHAT_SESSIONS_FILE.parent / "conversations"
 
@@ -37,7 +36,7 @@ def load_user_conversations(user_id: str) -> List[Dict]:
         return []
 
     try:
-        with open(conv_file, 'r', encoding='utf-8') as f:
+        with open(conv_file, "r", encoding="utf-8") as f:
             data = json.load(f)
             return data.get("conversations", [])
     except (json.JSONDecodeError, IOError):
@@ -50,10 +49,11 @@ def save_user_conversations(user_id: str, conversations: List[Dict]):
     conv_file = _get_conversation_file(user_id)
 
     try:
-        with open(conv_file, 'w', encoding='utf-8') as f:
+        with open(conv_file, "w", encoding="utf-8") as f:
             json.dump({"conversations": conversations}, f, indent=2, ensure_ascii=False)
     except IOError as e:
         import logging
+
         logging.warning(f"Failed to save conversations for user {user_id}: {e}")
 
 
@@ -74,7 +74,7 @@ def create_conversation(user_id: str, conversation_id: str) -> Dict:
         "title": "New Chat",
         "created_at": now,
         "updated_at": now,
-        "messages": []
+        "messages": [],
     }
 
     conversations = load_user_conversations(user_id)
@@ -89,7 +89,7 @@ def add_message(
     conversation_id: str,
     role: str,
     content: str,
-    sources: Optional[List[Dict]] = None
+    sources: Optional[List[Dict]] = None,
 ):
     """Add a message to a conversation.
 
@@ -119,7 +119,7 @@ def add_message(
     message = {
         "role": role,
         "content": content,
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
     if sources:
         message["sources"] = sources

@@ -3,7 +3,7 @@
 import logging
 import threading
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -27,11 +27,13 @@ _scrape_thread: Optional[threading.Thread] = None
 
 class ScrapeStartRequest(BaseModel):
     """Request model for starting a scrape."""
+
     user_id: str
 
 
 class ScrapeStartResponse(BaseModel):
     """Response model for scrape start."""
+
     status: str
     message: str
     tickers: List[str]
@@ -39,6 +41,7 @@ class ScrapeStartResponse(BaseModel):
 
 class ScrapeStatusResponse(BaseModel):
     """Response model for scrape status."""
+
     status: str
     started_at: Optional[str]
     tickers_in_progress: List[str]
@@ -52,11 +55,13 @@ class ScrapeStatusResponse(BaseModel):
 
 class TickerMetadataRequest(BaseModel):
     """Request model for ticker metadata."""
+
     tickers: List[str]
 
 
 class TickerMetadataItem(BaseModel):
     """Metadata for a single ticker."""
+
     ticker: str
     last_scraped: Optional[str]
     articles_count: int
@@ -65,6 +70,7 @@ class TickerMetadataItem(BaseModel):
 
 class TickerMetadataResponse(BaseModel):
     """Response model for ticker metadata."""
+
     metadata: List[TickerMetadataItem]
 
 
@@ -102,37 +108,26 @@ async def start_scrape(request: ScrapeStartRequest):
     # Check if scraping is already running
     if _scrape_thread is not None and _scrape_thread.is_alive():
         return ScrapeStartResponse(
-            status="already_running",
-            message="A scraping job is already in progress",
-            tickers=[]
+            status="already_running", message="A scraping job is already in progress", tickers=[]
         )
 
     # Get user's portfolio tickers
     tickers = get_portfolio_tickers(request.user_id)
 
     if not tickers:
-        raise HTTPException(
-            status_code=400,
-            detail="User has no portfolio tickers to scrape"
-        )
+        raise HTTPException(status_code=400, detail="User has no portfolio tickers to scrape")
 
     # Reset scrape status before starting
     reset_scrape_status()
 
     # Start scraping in background thread
-    _scrape_thread = threading.Thread(
-        target=_run_scraper_thread,
-        args=(tickers,),
-        daemon=True
-    )
+    _scrape_thread = threading.Thread(target=_run_scraper_thread, args=(tickers,), daemon=True)
     _scrape_thread.start()
 
     logger.info(f"Started scraping {len(tickers)} tickers for user {request.user_id}")
 
     return ScrapeStartResponse(
-        status="started",
-        message=f"Started scraping {len(tickers)} tickers",
-        tickers=tickers
+        status="started", message=f"Started scraping {len(tickers)} tickers", tickers=tickers
     )
 
 
@@ -177,7 +172,7 @@ async def get_scrape_status_endpoint():
         articles_found=status.articles_found,
         time_elapsed_seconds=time_elapsed,
         pipeline_stage=status.pipeline_stage,
-        stage_message=stage_message
+        stage_message=stage_message,
     )
 
 
@@ -230,7 +225,7 @@ async def get_tickers_metadata_endpoint(request: TickerMetadataRequest):
             ticker=ticker,
             last_scraped=metadata.last_scraped if metadata else None,
             articles_count=metadata.articles_count if metadata else 0,
-            never_scraped=not bool(metadata)
+            never_scraped=not bool(metadata),
         )
         for ticker, metadata in metadata_dict.items()
     ]

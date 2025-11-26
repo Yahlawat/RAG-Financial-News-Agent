@@ -1,14 +1,14 @@
 """Tests for the session manager module."""
-from pathlib import Path
+
 from unittest.mock import patch
 
 import pytest
 
 from finnews.ui.session_manager import (
-    load_session,
     create_new_conversation,
+    get_active_conversation,
+    load_session,
     set_active_conversation,
-    get_active_conversation
 )
 
 
@@ -19,7 +19,7 @@ class TestSessionManager:
     def setup_session_file(self, temp_dir):
         """Setup temporary session file for each test."""
         self.session_file = temp_dir / "chat_sessions" / "sessions.json"
-        with patch('finnews.ui.session_manager.SESSION_FILE', str(self.session_file)):
+        with patch("finnews.ui.session_manager.SESSION_FILE", str(self.session_file)):
             yield
 
     def test_load_session_creates_new_for_new_user(self):

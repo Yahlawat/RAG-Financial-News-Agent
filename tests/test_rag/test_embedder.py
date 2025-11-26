@@ -1,16 +1,12 @@
 """Tests for the embedder module."""
+
 import json
 import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from finnews.rag.embedder import (
-    load_chunks_from_file,
-    batch,
-    build_chroma_index
-)
+from finnews.rag.embedder import batch, build_chroma_index, load_chunks_from_file
 
 
 class TestLoadChunksFromFile:
@@ -25,8 +21,8 @@ class TestLoadChunksFromFile:
                     "title": "Test Article 1",
                     "url": "https://example.com/1",
                     "relevant_tickers": "AAPL, MSFT",
-                    "published_date": "2024-01-01"
-                }
+                    "published_date": "2024-01-01",
+                },
             },
             {
                 "content": "This is test content 2",
@@ -34,28 +30,28 @@ class TestLoadChunksFromFile:
                     "title": "Test Article 2",
                     "url": "https://example.com/2",
                     "relevant_tickers": "GOOGL",
-                    "published_date": "2024-01-02"
-                }
-            }
+                    "published_date": "2024-01-02",
+                },
+            },
         ]
-        
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.jsonl') as temp_file:
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
             for item in test_data:
-                temp_file.write(json.dumps(item) + '\n')
+                temp_file.write(json.dumps(item) + "\n")
             temp_file.flush()
-            
+
             documents, ids = load_chunks_from_file(temp_file.name)
-            
+
             assert len(documents) == 2
             assert len(ids) == 2
-            
+
             # Check first document
             assert documents[0].page_content == "This is test content 1"
             assert documents[0].metadata["title"] == "Test Article 1"
             assert documents[0].metadata["url"] == "https://example.com/1"
             assert documents[0].metadata["relevant_tickers"] == "AAPL, MSFT"
             assert documents[0].metadata["published_date"] == "2024-01-01"
-            
+
             # Check second document
             assert documents[1].page_content == "This is test content 2"
             assert documents[1].metadata["title"] == "Test Article 2"
@@ -66,27 +62,24 @@ class TestLoadChunksFromFile:
     def test_load_chunks_from_file_empty_content(self):
         """Test loading chunks with empty content (should be skipped)."""
         test_data = [
-            {
-                "content": "Valid content",
-                "metadata": {"title": "Valid Article"}
-            },
+            {"content": "Valid content", "metadata": {"title": "Valid Article"}},
             {
                 "content": "",  # Empty content should be skipped
-                "metadata": {"title": "Empty Article"}
+                "metadata": {"title": "Empty Article"},
             },
             {
                 "content": "   ",  # Whitespace only should be skipped
-                "metadata": {"title": "Whitespace Article"}
-            }
+                "metadata": {"title": "Whitespace Article"},
+            },
         ]
-        
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.jsonl') as temp_file:
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
             for item in test_data:
-                temp_file.write(json.dumps(item) + '\n')
+                temp_file.write(json.dumps(item) + "\n")
             temp_file.flush()
-            
+
             documents, ids = load_chunks_from_file(temp_file.name)
-            
+
             # Only one document should be loaded (the valid one)
             assert len(documents) == 1
             assert len(ids) == 1
@@ -100,17 +93,17 @@ class TestLoadChunksFromFile:
                 "metadata": {
                     "title": "Test Article",
                     # Missing other fields
-                }
+                },
             }
         ]
-        
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.jsonl') as temp_file:
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
             for item in test_data:
-                temp_file.write(json.dumps(item) + '\n')
+                temp_file.write(json.dumps(item) + "\n")
             temp_file.flush()
-            
+
             documents, ids = load_chunks_from_file(temp_file.name)
-            
+
             assert len(documents) == 1
             assert documents[0].page_content == "Test content"
             assert documents[0].metadata["title"] == "Test Article"
@@ -120,12 +113,12 @@ class TestLoadChunksFromFile:
 
     def test_load_chunks_from_file_invalid_json(self):
         """Test loading chunks with invalid JSON lines."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.jsonl') as temp_file:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
             temp_file.write('{"valid": "json"}\n')
-            temp_file.write('invalid json line\n')
+            temp_file.write("invalid json line\n")
             temp_file.write('{"another": "valid"}\n')
             temp_file.flush()
-            
+
             # Should not raise exception, just skip invalid lines
             documents, ids = load_chunks_from_file(temp_file.name)
             assert len(documents) == 2
@@ -173,121 +166,115 @@ class TestBatch:
 class TestBuildChromaIndex:
     """Test the build_chroma_index function."""
 
-    @patch('finnews.rag.embedder.HuggingFaceEmbeddings')
-    @patch('finnews.rag.embedder.Chroma')
+    @patch("finnews.rag.embedder.HuggingFaceEmbeddings")
+    @patch("finnews.rag.embedder.Chroma")
     def test_build_chroma_index_success(self, mock_chroma, mock_embeddings):
         """Test successful building of Chroma index."""
         # Mock the embedding model
         mock_embeddings.return_value = MagicMock()
-        
+
         # Mock the Chroma vectorstore
         mock_vectorstore = MagicMock()
         mock_vectorstore.get.return_value = {"ids": []}  # No existing documents
         mock_chroma.return_value = mock_vectorstore
-        
+
         # Create test data
         test_data = [
             {
                 "content": "Test content 1",
-                "metadata": {"title": "Test 1", "url": "https://example.com/1"}
+                "metadata": {"title": "Test 1", "url": "https://example.com/1"},
             },
             {
-                "content": "Test content 2", 
-                "metadata": {"title": "Test 2", "url": "https://example.com/2"}
-            }
+                "content": "Test content 2",
+                "metadata": {"title": "Test 2", "url": "https://example.com/2"},
+            },
         ]
-        
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.jsonl') as temp_file:
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
             for item in test_data:
-                temp_file.write(json.dumps(item) + '\n')
+                temp_file.write(json.dumps(item) + "\n")
             temp_file.flush()
-            
+
             with tempfile.TemporaryDirectory() as temp_dir:
                 result = build_chroma_index(
                     input_file=temp_file.name,
                     output_path=temp_dir,
                     model_name="test-model",
-                    batch_size=1
+                    batch_size=1,
                 )
-                
+
                 # Verify Chroma was initialized correctly
                 mock_chroma.assert_called_once()
                 mock_embeddings.assert_called_once_with(model_name="test-model")
-                
+
                 # Verify documents were added
                 assert mock_vectorstore.add_documents.called
                 assert mock_vectorstore.persist.called
 
-    @patch('finnews.rag.embedder.HuggingFaceEmbeddings')
-    @patch('finnews.rag.embedder.Chroma')
+    @patch("finnews.rag.embedder.HuggingFaceEmbeddings")
+    @patch("finnews.rag.embedder.Chroma")
     def test_build_chroma_index_existing_documents(self, mock_chroma, mock_embeddings):
         """Test building index when documents already exist."""
         # Mock the embedding model
         mock_embeddings.return_value = MagicMock()
-        
+
         # Mock the Chroma vectorstore with existing documents
         mock_vectorstore = MagicMock()
         mock_vectorstore.get.return_value = {"ids": ["existing_id"]}
         mock_chroma.return_value = mock_vectorstore
-        
+
         # Create test data
         test_data = [
-            {
-                "content": "Test content",
-                "metadata": {"title": "Test", "url": "https://example.com"}
-            }
+            {"content": "Test content", "metadata": {"title": "Test", "url": "https://example.com"}}
         ]
-        
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.jsonl') as temp_file:
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
             for item in test_data:
-                temp_file.write(json.dumps(item) + '\n')
+                temp_file.write(json.dumps(item) + "\n")
             temp_file.flush()
-            
+
             with tempfile.TemporaryDirectory() as temp_dir:
                 result = build_chroma_index(
                     input_file=temp_file.name,
                     output_path=temp_dir,
                     model_name="test-model",
-                    batch_size=1
+                    batch_size=1,
                 )
-                
+
                 # Should not add documents if they already exist
                 assert not mock_vectorstore.add_documents.called
 
-    @patch('finnews.rag.embedder.HuggingFaceEmbeddings')
-    @patch('finnews.rag.embedder.Chroma')
+    @patch("finnews.rag.embedder.HuggingFaceEmbeddings")
+    @patch("finnews.rag.embedder.Chroma")
     def test_build_chroma_index_exception_handling(self, mock_chroma, mock_embeddings):
         """Test handling of exceptions during index building."""
         # Mock the embedding model
         mock_embeddings.return_value = MagicMock()
-        
+
         # Mock the Chroma vectorstore to raise exception
         mock_vectorstore = MagicMock()
         mock_vectorstore.get.side_effect = Exception("Chroma error")
         mock_chroma.return_value = mock_vectorstore
-        
+
         # Create test data
         test_data = [
-            {
-                "content": "Test content",
-                "metadata": {"title": "Test", "url": "https://example.com"}
-            }
+            {"content": "Test content", "metadata": {"title": "Test", "url": "https://example.com"}}
         ]
-        
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.jsonl') as temp_file:
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
             for item in test_data:
-                temp_file.write(json.dumps(item) + '\n')
+                temp_file.write(json.dumps(item) + "\n")
             temp_file.flush()
-            
+
             with tempfile.TemporaryDirectory() as temp_dir:
                 # Should handle exception gracefully
                 result = build_chroma_index(
                     input_file=temp_file.name,
                     output_path=temp_dir,
                     model_name="test-model",
-                    batch_size=1
+                    batch_size=1,
                 )
-                
+
                 # Should still return the vectorstore
                 assert result == mock_vectorstore
 
@@ -295,7 +282,4 @@ class TestBuildChromaIndex:
         """Test building index with nonexistent input file."""
         with tempfile.TemporaryDirectory() as temp_dir:
             with pytest.raises(FileNotFoundError):
-                build_chroma_index(
-                    input_file="nonexistent.jsonl",
-                    output_path=temp_dir
-                )
+                build_chroma_index(input_file="nonexistent.jsonl", output_path=temp_dir)

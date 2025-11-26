@@ -1,6 +1,6 @@
 """Tests for the common config module."""
+
 import os
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -17,16 +17,16 @@ class TestSettings:
         """Test that default values are set correctly."""
         with patch.dict(os.environ, {}, clear=True):
             settings = Settings()
-            
+
             # Test API settings
             assert settings.OPENAI_API_KEY is None
             assert settings.LLM_MODEL == "gpt-4o-mini"
-            
+
             # Test network settings
             assert settings.API_HOST == "127.0.0.1"
             assert settings.API_PORT == 8000
             assert settings.STREAMLIT_PORT == 8501
-        
+
         # Test path settings
         assert isinstance(settings.CHROMA_DIR, Path)
         assert isinstance(settings.CHAT_MEMORY_DIR, Path)
@@ -35,16 +35,19 @@ class TestSettings:
 
     def test_environment_variable_loading(self):
         """Test that environment variables are loaded correctly."""
-        with patch.dict(os.environ, {
-            'OPENAI_API_KEY': 'test-key-123',
-            'LLM_MODEL': 'gpt-4',
-            'API_HOST': '0.0.0.0',
-            'API_PORT': '9000'
-        }):
+        with patch.dict(
+            os.environ,
+            {
+                "OPENAI_API_KEY": "test-key-123",
+                "LLM_MODEL": "gpt-4",
+                "API_HOST": "0.0.0.0",
+                "API_PORT": "9000",
+            },
+        ):
             settings = Settings()
-            assert settings.OPENAI_API_KEY == 'test-key-123'
-            assert settings.LLM_MODEL == 'gpt-4'
-            assert settings.API_HOST == '0.0.0.0'
+            assert settings.OPENAI_API_KEY == "test-key-123"
+            assert settings.LLM_MODEL == "gpt-4"
+            assert settings.API_HOST == "0.0.0.0"
             assert settings.API_PORT == 9000
 
     def test_file_paths(self):
@@ -59,20 +62,20 @@ class TestSettings:
 
     def test_invalid_api_port(self):
         """Test validation of invalid API port."""
-        with patch.dict(os.environ, {'API_PORT': 'invalid'}):
+        with patch.dict(os.environ, {"API_PORT": "invalid"}):
             with pytest.raises(ValidationError):
                 Settings()
 
     def test_invalid_streamlit_port(self):
         """Test validation of invalid Streamlit port."""
-        with patch.dict(os.environ, {'STREAMLIT_PORT': 'not_a_number'}):
+        with patch.dict(os.environ, {"STREAMLIT_PORT": "not_a_number"}):
             with pytest.raises(ValidationError):
                 Settings()
 
     def test_path_construction(self):
         """Test that paths are constructed relative to the correct root."""
         settings = Settings()
-        
+
         # All paths should be under the same root
         root = settings.CHROMA_DIR.parent.parent
         assert settings.CHROMA_DIR.is_relative_to(root)
@@ -87,7 +90,7 @@ class TestSettings:
         """Test that settings instance behaves as expected."""
         settings1 = Settings()
         settings2 = Settings()
-        
+
         # Should be different instances but with same values
         assert settings1 is not settings2
         assert settings1.API_PORT == settings2.API_PORT

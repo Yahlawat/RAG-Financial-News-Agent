@@ -1,4 +1,7 @@
+from finnews.common.logging import get_logger
 from finnews.rag.chunker import main as chunker_main
+
+logger = get_logger(__name__)
 
 
 def main() -> int:
@@ -12,7 +15,7 @@ def main() -> int:
         chunker_main()
         return 0
     except Exception as e:
-        print(f"Error during chunking: {e}")
+        logger.error(f"Error during chunking: {e}")
         return 1
 
 

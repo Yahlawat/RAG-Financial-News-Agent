@@ -1,8 +1,9 @@
 import logging
 import uuid
 from typing import Optional
+
 from finnews.common.config import settings
-from finnews.common.io_utils import read_json, write_json, ensure_file_dir
+from finnews.common.io_utils import ensure_file_dir, read_json, write_json
 
 SESSION_FILE = str(settings.CHAT_SESSIONS_FILE)
 logger = logging.getLogger(__name__)

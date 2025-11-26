@@ -1,15 +1,15 @@
 """Shared pytest fixtures for all tests."""
+
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
-from datetime import datetime
 
 import pytest
-
 
 # ============================================================================
 # Mock Response Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def mock_api_response():
@@ -24,9 +24,9 @@ def mock_api_response():
             {
                 "title": "Apple Reports Strong Q4 Earnings",
                 "url": "https://example.com/apple-earnings",
-                "published_date": "2024-01-01"
+                "published_date": "2024-01-01",
             }
-        ]
+        ],
     }
     mock.raise_for_status.return_value = None
     mock.status_code = 200
@@ -42,7 +42,7 @@ def mock_api_response_empty_sources():
         "user_id": "test_user",
         "question": "What is the latest news?",
         "answer": "Test answer",
-        "sources": []
+        "sources": [],
     }
     mock.raise_for_status.return_value = None
     mock.status_code = 200
@@ -52,6 +52,7 @@ def mock_api_response_empty_sources():
 # ============================================================================
 # Temporary Directory Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def temp_dir():
@@ -63,7 +64,7 @@ def temp_dir():
 @pytest.fixture
 def temp_file():
     """Provide a temporary file for tests."""
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.jsonl') as f:
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as f:
         yield Path(f.name)
     Path(f.name).unlink(missing_ok=True)
 
@@ -71,6 +72,7 @@ def temp_file():
 # ============================================================================
 # Mock Data Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def sample_article():
@@ -81,7 +83,7 @@ def sample_article():
         "body": "Apple Inc. reported strong Q4 earnings today, beating analyst expectations.",
         "published_date": "2024-01-01",
         "tickers": ["AAPL"],
-        "source": "FinViz"
+        "source": "FinViz",
     }
 
 
@@ -95,7 +97,7 @@ def sample_articles():
             "body": "Apple Inc. reported strong Q4 earnings today.",
             "published_date": "2024-01-01",
             "tickers": ["AAPL"],
-            "source": "FinViz"
+            "source": "FinViz",
         },
         {
             "title": "Microsoft Announces New Product",
@@ -103,8 +105,8 @@ def sample_articles():
             "body": "Microsoft unveiled a new product line today.",
             "published_date": "2024-01-02",
             "tickers": ["MSFT"],
-            "source": "FinViz"
-        }
+            "source": "FinViz",
+        },
     ]
 
 
@@ -117,13 +119,14 @@ def sample_chunk():
         "title": "Apple Reports Strong Q4 Earnings",
         "url": "https://example.com/apple-earnings",
         "published_date": "2024-01-01",
-        "tickers": ["AAPL"]
+        "tickers": ["AAPL"],
     }
 
 
 # ============================================================================
 # Mock Streamlit Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def mock_streamlit():
@@ -145,6 +148,7 @@ def mock_streamlit():
 # Mock Vector Store Fixtures
 # ============================================================================
 
+
 @pytest.fixture
 def mock_vectorstore():
     """Mock Chroma vector store."""
@@ -162,8 +166,8 @@ def mock_article_store():
         "documents": ["Doc 1", "Doc 2"],
         "metadatas": [
             {"title": "Test 1", "url": "http://test1.com", "published_date": "2024-01-01"},
-            {"title": "Test 2", "url": "http://test2.com", "published_date": "2024-01-02"}
-        ]
+            {"title": "Test 2", "url": "http://test2.com", "published_date": "2024-01-02"},
+        ],
     }
     return mock
 
@@ -172,17 +176,14 @@ def mock_article_store():
 def mock_chat_store():
     """Mock chat memory vector store."""
     mock = MagicMock()
-    mock._collection.get.return_value = {
-        "ids": [],
-        "documents": [],
-        "metadatas": []
-    }
+    mock._collection.get.return_value = {"ids": [], "documents": [], "metadatas": []}
     return mock
 
 
 # ============================================================================
 # Settings Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def mock_settings(temp_dir):

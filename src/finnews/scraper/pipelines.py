@@ -1,7 +1,9 @@
 import json
+
 from finnews.common.config import settings
 from finnews.common.io_utils import ensure_file_dir
 from finnews.scraper.utils import load_existing_urls
+
 
 class SaveNewsJSONLPipeline:
     def __init__(self):
@@ -25,10 +27,10 @@ class SaveNewsJSONLPipeline:
             return None
 
         self.seen_urls.add(url)
-        
+
         if self.file is None:
             self.file = open(self.output_file, "a+", encoding="utf-8")
-        
+
         self.file.write(json.dumps(dict(item)) + "\n")
         return item
 

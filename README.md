@@ -28,7 +28,7 @@ Below is an example conversation demonstrating the system's capabilities:
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/Yahlawat/Financial-News-Agent.git
 cd Financial-News-Agent
 
 # Install the package in editable mode with all dependencies

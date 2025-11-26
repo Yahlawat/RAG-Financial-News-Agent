@@ -1,33 +1,27 @@
-from typing import Optional
-from langchain_chroma import Chroma
-from langchain.schema import Document
-from datetime import datetime, timezone
-from uuid import uuid4
 import math
+from datetime import datetime, timezone
+from typing import Optional
+from uuid import uuid4
 
-from dotenv import load_dotenv
+from langchain.schema import Document
+from langchain_chroma import Chroma
+
 from finnews.common.logging import get_logger
-from finnews.common.io_utils import ensure_file_dir
 from finnews.rag.embedder import get_embedding_model
-
-load_dotenv()
 
 logger = get_logger(__name__)
 
-def load_vectorstore(
-    persist_directory: str,
-    model_name: str | None = None
-) -> Chroma:
+
+def load_vectorstore(persist_directory: str, model_name: str | None = None) -> Chroma:
     logger.info(f"Loading vectorstore from {persist_directory}")
     from pathlib import Path
+
     Path(persist_directory).mkdir(parents=True, exist_ok=True)
     embedding_model = get_embedding_model(model_name)
-    store = Chroma(
-        persist_directory=persist_directory,
-        embedding_function=embedding_model
-    )
+    store = Chroma(persist_directory=persist_directory, embedding_function=embedding_model)
     logger.info("Vectorstore loaded")
     return store
+
 
 def article_chunk_reranker(
     docs: list[Document],
@@ -67,11 +61,9 @@ def article_chunk_reranker(
 
     return sorted(docs, key=score, reverse=True)
 
+
 def article_chunk_retriever(
-    vectorstore: Chroma,
-    query: str,
-    target_tickers: Optional[list[str]] = None,
-    top_n: int = 5
+    vectorstore: Chroma, query: str, target_tickers: Optional[list[str]] = None, top_n: int = 5
 ) -> list[Document]:
     logger.info("Retrieving articles for query: %s", query)
 
@@ -84,12 +76,9 @@ def article_chunk_retriever(
     logger.info("Returning top %d documents", top_n)
     return reranked_docs[:top_n]
 
+
 def add_chat_memory(
-    chat_store: Chroma,
-    conversation_id: str,
-    user_id: str,
-    question: str,
-    answer: str
+    chat_store: Chroma, conversation_id: str, user_id: str, question: str, answer: str
 ) -> None:
     timestamp = datetime.now(timezone.utc).isoformat()
     suffix = str(uuid4()).split("-")[0]
@@ -102,7 +91,7 @@ def add_chat_memory(
             "user_id": user_id,
             "conversation_id": conversation_id,
             "doc_type": "chat",
-        }
+        },
     )
 
     assistant_doc = Document(
@@ -113,42 +102,34 @@ def add_chat_memory(
             "user_id": user_id,
             "conversation_id": conversation_id,
             "doc_type": "chat",
-        }
+        },
     )
 
     chat_store.add_documents(
         documents=[user_doc, assistant_doc],
         ids=[
             f"{conversation_id}_{timestamp}_user_{suffix}",
-            f"{conversation_id}_{timestamp}_assistant_{suffix}"
-        ]
+            f"{conversation_id}_{timestamp}_assistant_{suffix}",
+        ],
     )
     logger.info("Stored chat messages for conversation %s", conversation_id)
 
+
 def retrieve_chat_memory(
-    chat_store: Chroma,
-    conversation_id: str,
-    query: str,
-    k: int = 3
+    chat_store: Chroma, conversation_id: str, query: str, k: int = 3
 ) -> list[Document]:
     logger.debug("Retrieving relevant chat messages for conversation %s", conversation_id)
     metadata_filter = {"conversation_id": conversation_id}
     retriever = chat_store.as_retriever(search_kwargs={"k": k, "filter": metadata_filter})
     return retriever.invoke(query)
 
+
 def get_full_chat_history(
-    chat_store: Chroma,
-    conversation_id: str,
-    user_id: Optional[str] = None
+    chat_store: Chroma, conversation_id: str, user_id: Optional[str] = None
 ) -> list[Document]:
     logger.debug("Fetching full chat history for conversation %s", conversation_id)
     if user_id:
-        filters = {
-            "$and": [
-                {"conversation_id": conversation_id},
-                {"user_id": user_id}
-            ]
-        }
+        filters = {"$and": [{"conversation_id": conversation_id}, {"user_id": user_id}]}
     else:
         filters = {"conversation_id": conversation_id}
 
@@ -158,4 +139,3 @@ def get_full_chat_history(
         for content, metadata in zip(results["documents"], results["metadatas"])
     ]
     return sorted(docs, key=lambda doc: doc.metadata.get("timestamp", ""))
-

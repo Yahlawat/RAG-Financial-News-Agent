@@ -26,16 +26,15 @@ RETRY_HTTP_CODES = [500, 502, 503, 504, 522, 524, 408]
 
 # Pipeline for saving articles
 ITEM_PIPELINES = {
-    'finnews.scraper.pipelines.SaveNewsJSONLPipeline': 300,
+    "finnews.scraper.pipelines.SaveNewsJSONLPipeline": 300,
 }
 
 # Extensions for progress tracking
 EXTENSIONS = {
-    'finnews.scraper.progress_extension.ProgressTrackerExtension': 100,
+    "finnews.scraper.progress_extension.ProgressTrackerExtension": 100,
 }
 
 # Compatibility settings
 REQUEST_FINGERPRINTER_IMPLEMENTATION = "2.7"
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 FEED_EXPORT_ENCODING = "utf-8"
-

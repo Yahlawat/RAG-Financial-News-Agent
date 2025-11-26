@@ -1,10 +1,11 @@
-import os
 import logging
-from tqdm import tqdm
+import os
 
+from langchain.schema import Document
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain.schema import Document
+from tqdm import tqdm
+
 from finnews.common.config import settings
 from finnews.common.io_utils import read_jsonl
 
@@ -40,8 +41,10 @@ def load_chunks_from_file(file_path: str):
             metadata = {
                 "title": item_metadata.get("title", ""),
                 "url": item_metadata.get("url", ""),
-                "relevant_tickers": ", ".join(item_metadata.get("relevant_tickers", [])) if isinstance(item_metadata.get("relevant_tickers"), list) else item_metadata.get("relevant_tickers", ""),
-                "published_date": item_metadata.get("published_date", "")
+                "relevant_tickers": ", ".join(item_metadata.get("relevant_tickers", []))
+                if isinstance(item_metadata.get("relevant_tickers"), list)
+                else item_metadata.get("relevant_tickers", ""),
+                "published_date": item_metadata.get("published_date", ""),
             }
 
             if not chunk:
@@ -61,7 +64,7 @@ def load_chunks_from_file(file_path: str):
 
 def batch(iterable: list, batch_size: int):
     for i in range(0, len(iterable), batch_size):
-        yield iterable[i:i + batch_size]
+        yield iterable[i : i + batch_size]
 
 
 def delete_old_articles_from_chroma(
@@ -139,9 +142,11 @@ def build_chroma_index(
 
     logger.info(f"Adding {len(new_documents)} new documents to Chroma DB...")
 
-    for doc_batch, id_batch in tqdm(zip(batch(new_documents, batch_size), batch(new_ids, batch_size)),
-                                    total=len(new_documents)//batch_size + 1,
-                                    desc="Indexing in batches"):
+    for doc_batch, id_batch in tqdm(
+        zip(batch(new_documents, batch_size), batch(new_ids, batch_size)),
+        total=len(new_documents) // batch_size + 1,
+        desc="Indexing in batches",
+    ):
         vectorstore.add_documents(documents=doc_batch, ids=id_batch)
 
     # Note: ChromaDB 0.4.24+ auto-persists changes, no need to call persist()

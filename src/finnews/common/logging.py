@@ -8,7 +8,7 @@ def setup_logging(
     level: int = logging.INFO,
     format_string: Optional[str] = None,
     log_file: Optional[Path] = None,
-    console: bool = True
+    console: bool = True,
 ) -> None:
     """Set up logging configuration.
 
@@ -19,7 +19,7 @@ def setup_logging(
         console: Whether to log to console (default: True)
     """
     if format_string is None:
-        format_string = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format_string = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
     handlers = []
 
@@ -30,14 +30,10 @@ def setup_logging(
         log_file.parent.mkdir(parents=True, exist_ok=True)
         handlers.append(logging.FileHandler(log_file))
 
-    logging.basicConfig(
-        level=level,
-        format=format_string,
-        handlers=handlers if handlers else None
-    )
+    logging.basicConfig(level=level, format=format_string, handlers=handlers if handlers else None)
 
 
-def get_logger(name: str = 'finnews') -> logging.Logger:
+def get_logger(name: str = "finnews") -> logging.Logger:
     """Get a logger instance.
 
     Args:

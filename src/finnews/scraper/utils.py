@@ -1,8 +1,8 @@
 """Common scraper utilities."""
 
-import os
 import json
 import logging
+import os
 from typing import Set
 
 logger = logging.getLogger(__name__)

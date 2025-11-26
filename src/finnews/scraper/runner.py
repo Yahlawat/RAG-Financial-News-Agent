@@ -4,21 +4,17 @@ import sys
 from typing import List
 
 from scrapy import cmdline
-from scrapy.crawler import CrawlerProcess
-from scrapy.utils.project import get_project_settings
 
-from finnews.scraper.spiders.finviz_spider import FinVizSpider
-from finnews.scraper.metadata import (
-    start_scrape,
-    complete_scrape,
-    reset_scrape_status,
-    start_chunking,
-    complete_chunking,
-    start_embedding,
-    complete_pipeline,
-    set_pipeline_error,
-)
 from finnews.common.config import settings
+from finnews.scraper.metadata import (
+    complete_chunking,
+    complete_pipeline,
+    complete_scrape,
+    set_pipeline_error,
+    start_chunking,
+    start_embedding,
+    start_scrape,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +31,7 @@ def _run_post_processing_pipeline() -> None:
         start_chunking(total_articles=0)  # Count will be updated by chunker
 
         from finnews.rag.chunker import main as chunker_main
+
         chunker_main()
 
         complete_chunking()
@@ -45,6 +42,7 @@ def _run_post_processing_pipeline() -> None:
         start_embedding()
 
         from finnews.rag.embedder import main as embedder_main
+
         embedder_main()
 
         logger.info("Embedding completed successfully")
@@ -57,6 +55,7 @@ def _run_post_processing_pipeline() -> None:
         logger.error(f"Error in post-processing pipeline: {e}", exc_info=True)
         # Determine which stage failed
         from finnews.scraper.metadata import get_scrape_status
+
         status = get_scrape_status()
 
         if status.pipeline_stage == "chunking":
@@ -94,7 +93,9 @@ def run_spider_with_tickers(tickers: List[str]) -> None:
 
         # Calculate dynamic timeout based on number of tickers
         # Formula: (tickers × timeout_per_ticker) + buffer, with a minimum
-        calculated_timeout = (len(tickers) * settings.SCRAPE_TIMEOUT_PER_TICKER) + settings.SCRAPE_TIMEOUT_BUFFER
+        calculated_timeout = (
+            len(tickers) * settings.SCRAPE_TIMEOUT_PER_TICKER
+        ) + settings.SCRAPE_TIMEOUT_BUFFER
         timeout_seconds = max(calculated_timeout, settings.SCRAPE_MIN_TIMEOUT)
 
         logger.info(
@@ -120,10 +121,7 @@ process.start()
 
         # Run the subprocess with calculated timeout
         result = subprocess.run(
-            [sys.executable, "-c", script],
-            capture_output=True,
-            text=True,
-            timeout=timeout_seconds
+            [sys.executable, "-c", script], capture_output=True, text=True, timeout=timeout_seconds
         )
 
         if result.returncode == 0:
@@ -135,7 +133,9 @@ process.start()
                 logger.info("Starting automatic post-processing pipeline")
                 _run_post_processing_pipeline()
             else:
-                logger.info("Auto-processing disabled. Run 'finnews-chunk' and 'finnews-embed' manually.")
+                logger.info(
+                    "Auto-processing disabled. Run 'finnews-chunk' and 'finnews-embed' manually."
+                )
                 # Mark pipeline as completed (without reset) so UI can show success message
                 complete_pipeline(status="completed")
         else:
@@ -154,4 +154,3 @@ process.start()
         logger.error(f"Error during scraping: {e}", exc_info=True)
         complete_scrape(status="error", articles_found=0)
         raise
-

@@ -5,7 +5,6 @@ from typing import Dict
 
 from scrapy import signals
 from scrapy.crawler import Crawler
-from scrapy.exceptions import NotConfigured
 
 from finnews.scraper.metadata import update_scrape_progress, update_ticker_scrape
 
@@ -59,7 +58,7 @@ class ProgressTrackerExtension:
         self.items_scraped += 1
 
         # Track articles per ticker
-        main_ticker = item.get('main_ticker')
+        main_ticker = item.get("main_ticker")
         if main_ticker:
             main_ticker = main_ticker.upper()
             self.ticker_counts[main_ticker] = self.ticker_counts.get(main_ticker, 0) + 1
@@ -68,10 +67,7 @@ class ProgressTrackerExtension:
         if self.items_scraped % 5 == 0:
             # Calculate how many tickers have been processed
             tickers_completed = len(self.ticker_counts)
-            update_scrape_progress(
-                completed=tickers_completed,
-                articles_found=self.items_scraped
-            )
+            update_scrape_progress(completed=tickers_completed, articles_found=self.items_scraped)
             logger.info(f"Progress: {self.items_scraped} articles, {tickers_completed} tickers")
 
     def spider_closed(self, spider, reason):
@@ -81,14 +77,13 @@ class ProgressTrackerExtension:
             spider: Scrapy spider instance
             reason: Reason for closing
         """
-        logger.info(f"Spider closed: {spider.name}, reason: {reason}, total items: {self.items_scraped}")
+        logger.info(
+            f"Spider closed: {spider.name}, reason: {reason}, total items: {self.items_scraped}"
+        )
 
         # Update ticker metadata
         for ticker, count in self.ticker_counts.items():
             update_ticker_scrape(ticker, count)
 
         # Final progress update
-        update_scrape_progress(
-            completed=len(self.ticker_counts),
-            articles_found=self.items_scraped
-        )
+        update_scrape_progress(completed=len(self.ticker_counts), articles_found=self.items_scraped)

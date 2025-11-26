@@ -1,7 +1,6 @@
 """Tests for the Streamlit app module."""
-from unittest.mock import patch
 
-import pytest
+from unittest.mock import patch
 
 from finnews.ui.app import api_base, format_time_ago
 
@@ -9,7 +8,7 @@ from finnews.ui.app import api_base, format_time_ago
 class TestApiBase:
     """Test the api_base utility function."""
 
-    @patch('finnews.ui.app.settings')
+    @patch("finnews.ui.app.settings")
     def test_api_base_default(self, mock_settings):
         """Test api_base returns correct URL format."""
         mock_settings.API_HOST = "127.0.0.1"
@@ -19,7 +18,7 @@ class TestApiBase:
 
         assert result == "http://127.0.0.1:8000"
 
-    @patch('finnews.ui.app.settings')
+    @patch("finnews.ui.app.settings")
     def test_api_base_custom_port(self, mock_settings):
         """Test api_base with custom port."""
         mock_settings.API_HOST = "localhost"
@@ -35,7 +34,7 @@ class TestFormatTimeAgo:
 
     def test_just_now(self):
         """Test time less than 60 seconds."""
-        from datetime import datetime, timedelta
+        from datetime import datetime
 
         timestamp = datetime.now()
         result = format_time_ago(timestamp.isoformat())

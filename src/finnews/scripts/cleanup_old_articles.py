@@ -9,15 +9,15 @@ This script performs DELETION ONLY - no re-processing of kept articles:
 5. Filter processed chunks by date (no re-chunking)
 6. Complete (no re-embedding needed)
 """
+
 import json
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import List, Dict
 
 from langchain_chroma import Chroma
 
-from finnews.common.config import settings, ROOT
+from finnews.common.config import ROOT, settings
 from finnews.rag.embedder import delete_old_articles_from_chroma, get_embedding_model
 
 
@@ -40,11 +40,7 @@ def parse_date(date_str: str) -> datetime:
         return datetime.min.replace(tzinfo=timezone.utc)
 
 
-def filter_articles_by_date(
-    input_file: Path,
-    output_file: Path,
-    days_to_keep: int = 30
-) -> int:
+def filter_articles_by_date(input_file: Path, output_file: Path, days_to_keep: int = 30) -> int:
     """
     Filter articles to keep only those from the last N days.
 
@@ -68,15 +64,15 @@ def filter_articles_by_date(
         print(f"Warning: Input file {input_file} does not exist")
         return 0
 
-    with open(input_file, 'r', encoding='utf-8') as f:
+    with open(input_file, "r", encoding="utf-8") as f:
         for line in f:
             total_articles += 1
             try:
                 article = json.loads(line)
-                published_date = article.get('published_date')
+                published_date = article.get("published_date")
 
                 # Skip articles without a published_date
-                if not published_date or published_date == 'null':
+                if not published_date or published_date == "null":
                     continue
 
                 article_date = parse_date(published_date)
@@ -90,9 +86,9 @@ def filter_articles_by_date(
 
     # Write filtered articles
     output_file.parent.mkdir(parents=True, exist_ok=True)
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, "w", encoding="utf-8") as f:
         for article in kept_articles:
-            f.write(json.dumps(article, ensure_ascii=False) + '\n')
+            f.write(json.dumps(article, ensure_ascii=False) + "\n")
 
     print(f"Kept {len(kept_articles)} out of {total_articles} articles")
     print(f"Removed {total_articles - len(kept_articles)} old articles")
@@ -178,7 +174,7 @@ def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
             print(f"  [OK] Backed up vector DB to {backup_dir / 'chroma_store'}")
 
     # Delete old articles from vector database first
-    print(f"\n[3/6] Deleting old articles from vector database...")
+    print("\n[3/6] Deleting old articles from vector database...")
 
     cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
     cutoff_date_str = cutoff_date.date().isoformat()
@@ -217,16 +213,16 @@ def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
     total_chunks = 0
 
     if processed_chunks_path.exists():
-        with open(processed_chunks_path, 'r', encoding='utf-8') as f:
+        with open(processed_chunks_path, "r", encoding="utf-8") as f:
             for line in f:
                 total_chunks += 1
                 try:
                     chunk = json.loads(line)
-                    metadata = chunk.get('metadata', {})
-                    published_date = metadata.get('published_date', '')
+                    metadata = chunk.get("metadata", {})
+                    published_date = metadata.get("published_date", "")
 
                     # Skip chunks without a published_date
-                    if not published_date or published_date == 'null':
+                    if not published_date or published_date == "null":
                         continue
 
                     # Keep chunks from articles within the date range
@@ -238,9 +234,9 @@ def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
 
         # Write filtered chunks back
         processed_chunks_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(processed_chunks_path, 'w', encoding='utf-8') as f:
+        with open(processed_chunks_path, "w", encoding="utf-8") as f:
             for chunk in kept_chunks:
-                f.write(json.dumps(chunk, ensure_ascii=False) + '\n')
+                f.write(json.dumps(chunk, ensure_ascii=False) + "\n")
 
         print(f"  [OK] Kept {len(kept_chunks)} out of {total_chunks} chunks")
         print(f"  [OK] Removed {total_chunks - len(kept_chunks)} old chunks")
@@ -270,15 +266,10 @@ def main():
         description="Clean up old articles using selective deletion (no full rebuild)"
     )
     parser.add_argument(
-        "--days",
-        type=int,
-        default=30,
-        help="Number of days of articles to keep (default: 30)"
+        "--days", type=int, default=30, help="Number of days of articles to keep (default: 30)"
     )
     parser.add_argument(
-        "--no-backup",
-        action="store_true",
-        help="Skip creating backups before cleanup"
+        "--no-backup", action="store_true", help="Skip creating backups before cleanup"
     )
 
     args = parser.parse_args()

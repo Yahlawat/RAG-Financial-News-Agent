@@ -1,14 +1,11 @@
 """Tests for the FastAPI main module."""
-from unittest.mock import MagicMock, patch
-
-import pytest
 
 from finnews.api.main import ChatRequest
-
 
 # ============================================================================
 # ChatRequest Model Tests
 # ============================================================================
+
 
 class TestChatRequest:
     """Test the ChatRequest Pydantic model."""
@@ -18,7 +15,7 @@ class TestChatRequest:
         request = ChatRequest(
             question="What is the latest news about AAPL?",
             user_id="test_user",
-            conversation_id="test_conv"
+            conversation_id="test_conv",
         )
 
         assert request.question == "What is the latest news about AAPL?"
@@ -36,7 +33,7 @@ class TestChatRequest:
             conversation_id="test_conv",
             tickers=["AAPL", "MSFT"],
             top_k=10,
-            chat_k=5
+            chat_k=5,
         )
 
         assert request.tickers == ["AAPL", "MSFT"]

@@ -1,16 +1,16 @@
 # app.py
-from typing import List, Optional
 import logging
-import uvicorn
 from contextlib import asynccontextmanager
+from typing import List, Optional
 
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from finnews.rag.retriever import load_vectorstore
-from finnews.rag.rag_chain import rag_chat
-from finnews.common.config import settings
 from finnews.api.scraper_endpoints import router as scraper_router
+from finnews.common.config import settings
+from finnews.rag.rag_chain import rag_chat
+from finnews.rag.retriever import load_vectorstore
 from finnews.ui.user_profile import get_portfolio_tickers
 
 logging.basicConfig(level=logging.INFO)
@@ -61,11 +61,10 @@ class ChatRequest(BaseModel):
     top_k: Optional[int] = 5
     chat_k: Optional[int] = 3
 
+
 @app.post("/chat")
 async def chat_endpoint(req: ChatRequest):
-    logger.info(
-        "Chat request from user %s in conversation %s", req.user_id, req.conversation_id
-    )
+    logger.info("Chat request from user %s in conversation %s", req.user_id, req.conversation_id)
 
     # Auto-load user's portfolio tickers if not explicitly provided
     target_tickers = req.tickers

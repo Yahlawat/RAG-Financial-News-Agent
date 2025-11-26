@@ -1,4 +1,5 @@
 """Tests for the common paths module."""
+
 from unittest.mock import patch
 
 from finnews.common.paths import ensure_dirs
@@ -9,7 +10,7 @@ class TestEnsureDirs:
 
     def test_ensure_dirs_creates_directories(self, mock_settings):
         """Test that ensure_dirs creates all required directories."""
-        with patch('finnews.common.paths.settings', mock_settings):
+        with patch("finnews.common.paths.settings", mock_settings):
             # Directories don't exist initially
             assert not mock_settings.CHROMA_DIR.exists()
             assert not mock_settings.CHAT_MEMORY_DIR.exists()
@@ -25,7 +26,7 @@ class TestEnsureDirs:
 
     def test_ensure_dirs_idempotent(self, mock_settings):
         """Test that ensure_dirs can be called multiple times safely."""
-        with patch('finnews.common.paths.settings', mock_settings):
+        with patch("finnews.common.paths.settings", mock_settings):
             # Create directories
             ensure_dirs()
 

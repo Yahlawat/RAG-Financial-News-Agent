@@ -1,22 +1,17 @@
-import os
 import logging
-from datetime import datetime
+import os
 from typing import Optional
 
 from langchain_chroma import Chroma
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
-from dotenv import load_dotenv
 from finnews.common.config import settings
-
-load_dotenv()
-
 from finnews.rag.retriever import (
-    load_vectorstore,
-    article_chunk_retriever,
-    retrieve_chat_memory,
     add_chat_memory,
+    article_chunk_retriever,
+    load_vectorstore,
+    retrieve_chat_memory,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -74,6 +69,7 @@ def rag_chat(
         raise ValueError("OPENAI_API_KEY is required but not set in config or environment")
 
     from langchain_openai import ChatOpenAI  # type: ignore
+
     llm = ChatOpenAI(model=settings.LLM_MODEL, temperature=0.0, api_key=api_key)
 
     chain = (
@@ -122,4 +118,3 @@ def rag_chat(
         "answer": answer_output,
         "sources": sources,
     }
-

@@ -2,23 +2,26 @@ import os
 import sys
 import time
 from datetime import datetime
-from streamlit.web import cli as stcli
-import streamlit as st
+
 import requests
+import streamlit as st
+from streamlit.web import cli as stcli
 
 from finnews.common.config import settings
-from finnews.ui.session_manager import load_session, create_new_conversation, set_active_conversation
 from finnews.ui.conversation_history import (
-    load_user_conversations,
     add_message,
+    delete_conversation,
     get_conversation_messages,
-    delete_conversation
+    load_user_conversations,
 )
-from finnews.ui.user_profile import (
-    load_user_profile,
-    add_tickers as add_tickers_to_profile,
-    remove_tickers as remove_tickers_from_profile
+from finnews.ui.session_manager import (
+    create_new_conversation,
+    load_session,
+    set_active_conversation,
 )
+from finnews.ui.user_profile import add_tickers as add_tickers_to_profile
+from finnews.ui.user_profile import load_user_profile
+from finnews.ui.user_profile import remove_tickers as remove_tickers_from_profile
 
 
 def api_base() -> str:
@@ -72,7 +75,7 @@ def render_portfolio_section(user_id: str):
                 response = requests.post(
                     f"{api_base()}/scrape/tickers/metadata",
                     json={"tickers": profile.portfolio_tickers},
-                    timeout=5
+                    timeout=5,
                 )
                 if response.status_code == 200:
                     metadata = response.json().get("metadata", [])
@@ -113,10 +116,7 @@ def render_portfolio_section(user_id: str):
     col1, col2 = st.columns([3, 1])
     with col1:
         new_ticker = st.text_input(
-            "Add ticker",
-            placeholder="AAPL",
-            key="new_ticker_input",
-            label_visibility="collapsed"
+            "Add ticker", placeholder="AAPL", key="new_ticker_input", label_visibility="collapsed"
         )
     with col2:
         if st.button("➕ Add", use_container_width=True):
@@ -157,7 +157,7 @@ def render_scraping_section(user_id: str):
             total = 0
             articles_found = 0
             time_elapsed = 0
-    except requests.RequestException as e:
+    except requests.RequestException:
         # API is unavailable or request failed - default to idle state
         scrape_status = "idle"
         pipeline_stage = "idle"
@@ -219,14 +219,14 @@ def render_scraping_section(user_id: str):
             if st.button("🔄 Scrape Now", use_container_width=True):
                 try:
                     response = requests.post(
-                        f"{api_base()}/scrape/start",
-                        json={"user_id": user_id},
-                        timeout=10
+                        f"{api_base()}/scrape/start", json={"user_id": user_id}, timeout=10
                     )
                     if response.status_code == 200:
                         result = response.json()
                         if result.get("status") == "started":
-                            st.success(f"Started scraping {len(result.get('tickers', []))} tickers!")
+                            st.success(
+                                f"Started scraping {len(result.get('tickers', []))} tickers!"
+                            )
                             time.sleep(1)
                             st.rerun()
                         elif result.get("status") == "already_running":
@@ -283,7 +283,7 @@ def render_sidebar(user_id: str, current_conversation_id: str):
                         f"{'📌 ' if is_active else ''}{title}",
                         key=f"conv_{conv_id}",
                         use_container_width=True,
-                        type="primary" if is_active else "secondary"
+                        type="primary" if is_active else "secondary",
                     ):
                         set_active_conversation(user_id, conv_id)
                         st.rerun()
@@ -323,7 +323,7 @@ def run():
         page_title="FinNews Assistant",
         page_icon="📈",
         layout="wide",
-        initial_sidebar_state="expanded"
+        initial_sidebar_state="expanded",
     )
 
     st.title("📈 FinNews Assistant")
@@ -401,7 +401,9 @@ def run():
                     error_msg = "⏱️ Request timed out. The API server may be overloaded or processing a large query."
                     st.error(error_msg)
                 except requests.HTTPError as e:
-                    error_msg = f"❌ API returned an error: {e.response.status_code} - {e.response.text}"
+                    error_msg = (
+                        f"❌ API returned an error: {e.response.status_code} - {e.response.text}"
+                    )
                     st.error(error_msg)
                 except requests.RequestException as e:
                     error_msg = f"❌ API request failed: {e}"
@@ -411,9 +413,13 @@ def run():
 def main() -> None:
     script = os.path.abspath(__file__)
     args = [
-        "streamlit", "run", script,
-        "--server.port", str(settings.STREAMLIT_PORT),
-        "--server.headless", "true",
+        "streamlit",
+        "run",
+        script,
+        "--server.port",
+        str(settings.STREAMLIT_PORT),
+        "--server.headless",
+        "true",
     ]
     sys.argv = args
     sys.exit(stcli.main())

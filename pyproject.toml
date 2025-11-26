@@ -39,7 +39,6 @@ rag = [
   "transformers>=4.38,<4.45",
   "accelerate>=0.21,<0.31",
   "tqdm>=4.0.0",
-  "python-dotenv==1.0.0",
 ]
 dev = [
   "pytest>=8.0.0",
@@ -47,6 +46,10 @@ dev = [
   "pytest-asyncio>=0.23.0",
   "ipython>=8.12,<9.0",
   "ipykernel==6.25.0",
+  "ruff>=0.6.9",
+  "black>=24.8.0",
+  "isort>=5.13.2",
+  "pre-commit>=3.0.0",
 ]
 
 [project.scripts]
