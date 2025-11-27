@@ -22,12 +22,24 @@ class Settings(BaseSettings):
     SCRAPE_MIN_TIMEOUT: int = 1800  # minimum timeout in seconds (30 minutes)
     AUTO_PROCESS_PIPELINE: bool = True  # automatically run chunking + embedding after scraping
 
+    # Automated Scraping Scheduler
+    SCRAPE_SCHEDULE_ENABLED: bool = True  # enable automated scheduled scraping
+    SCRAPE_SCHEDULE_HOUR: int = 2  # hour (0-23) to run daily scrape (UTC)
+    SCRAPE_SCHEDULE_MINUTE: int = 0  # minute (0-59) to run daily scrape
+    SCRAPE_ON_NEW_TICKER: bool = True  # trigger scraping when new tickers are added
+
     # Data paths (directories)
     CHROMA_DIR: Path = ROOT / "data" / "chroma_store"
     CHAT_MEMORY_DIR: Path = ROOT / "data" / "chat_memory"
     PROCESSED_CHUNKS_DIR: Path = ROOT / "data" / "processed_chunks"
     TICKERS_DIR: Path = ROOT / "data" / "tickers"
     USER_PROFILES_DIR: Path = ROOT / "data" / "user_profiles"
+
+    # Logging settings
+    LOG_DIR: Path = ROOT / "logs"
+    LOG_LEVEL: str = "INFO"  # Can be overridden via environment
+    LOG_ROTATION_DAYS: int = 30  # Keep logs for 30 days
+    LOG_ENABLE_UNIFIED: bool = True  # Enable combined.log
 
     # Files
     RAW_NEWS_PATH: Path = ROOT / "data" / "raw_news" / "articles.jsonl"

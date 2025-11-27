@@ -10,7 +10,8 @@ class SaveNewsJSONLPipeline:
         self.output_file = str(settings.RAW_NEWS_PATH)
         ensure_file_dir(self.output_file)
 
-        # Load existing URLs using utility function
+        # Duplicate Detection Layer 3 (Final Safety Check): Load existing URLs
+        # This is the final checkpoint before saving to ensure no duplicates slip through
         self.seen_urls = load_existing_urls(self.output_file)
 
         self.file = None
@@ -21,6 +22,8 @@ class SaveNewsJSONLPipeline:
 
     def process_item(self, item, spider):
         url = item.get("url")
+        # Final duplicate check before persisting to storage
+        # Guards against race conditions and edge cases that earlier layers might miss
         if not url or url in self.seen_urls:
             if url:
                 spider.logger.info(f"Duplicate skipped: {url}")

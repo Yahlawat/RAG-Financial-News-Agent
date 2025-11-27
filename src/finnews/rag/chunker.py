@@ -1,14 +1,17 @@
 import json
+import logging
 import re
 import unicodedata
 
-from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from finnews.common.config import settings
 from finnews.common.io_utils import ensure_file_dir, read_jsonl
-from finnews.common.logging import get_logger
+from finnews.common.logging import get_logger, setup_logging
 
+# Setup logging for RAG component
+setup_logging(component="rag", level=logging.INFO, console=True)
 logger = get_logger(__name__)
 
 

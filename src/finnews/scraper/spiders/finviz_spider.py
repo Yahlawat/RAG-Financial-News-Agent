@@ -19,19 +19,20 @@ class FinVizSpider(scrapy.Spider):
         self.article_store = str(settings.RAW_NEWS_PATH)
         ensure_file_dir(self.article_store)
 
-        # Load known URLs using utility function
+        # Duplicate Detection Layer 1: Load existing URLs to avoid unnecessary HTTP requests
+        # This improves performance by skipping articles we've already scraped
         self.existing_urls = load_existing_urls(self.article_store)
 
-        # Use provided tickers or load from CSV
-        if tickers:
-            # Normalize tickers to uppercase and remove duplicates
-            self.tickers = list(set(t.strip().upper() for t in tickers if t.strip()))
-            self.logger.info(f"Using {len(self.tickers)} custom tickers")
-        else:
-            # Load tickers from CSV (backwards compatibility)
-            with open(settings.TICKERS_DIR / "tickers.csv", "r") as f:
-                self.tickers = [line.strip() for line in f if line.strip()]
-            self.logger.info(f"Loaded {len(self.tickers)} tickers from CSV")
+        # Tickers parameter is now required
+        if not tickers:
+            raise ValueError(
+                "tickers parameter is required. "
+                "The spider must be initialized with a list of ticker symbols."
+            )
+
+        # Normalize tickers to uppercase and remove duplicates
+        self.tickers = list(set(t.strip().upper() for t in tickers if t.strip()))
+        self.logger.info(f"Initialized spider with {len(self.tickers)} tickers: {self.tickers}")
 
     def start_requests(self):
         """
@@ -55,6 +56,8 @@ class FinVizSpider(scrapy.Spider):
 
             if url and url.startswith("/"):
                 url = "https://finviz.com" + url
+            # Duplicate Detection Layer 2: Skip if already in our existing URLs set
+            # Saves HTTP bandwidth and scraping time for articles we already have
             if not url or url in self.existing_urls:
                 continue
 

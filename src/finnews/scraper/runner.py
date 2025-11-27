@@ -1,11 +1,11 @@
 import logging
 import subprocess
 import sys
-from typing import List
 
 from scrapy import cmdline
 
 from finnews.common.config import settings
+from finnews.common.logging import setup_logging
 from finnews.scraper.metadata import (
     complete_chunking,
     complete_pipeline,
@@ -16,6 +16,8 @@ from finnews.scraper.metadata import (
     start_scrape,
 )
 
+# Setup logging for scraper component
+setup_logging(component="scraper", level=logging.INFO, console=True, unified=True)
 logger = logging.getLogger(__name__)
 
 
@@ -53,18 +55,8 @@ def _run_post_processing_pipeline() -> None:
 
     except Exception as e:
         logger.error(f"Error in post-processing pipeline: {e}", exc_info=True)
-        # Determine which stage failed
-        from finnews.scraper.metadata import get_scrape_status
-
-        status = get_scrape_status()
-
-        if status.pipeline_stage == "chunking":
-            set_pipeline_error("chunking", str(e))
-        elif status.pipeline_stage == "embedding":
-            set_pipeline_error("embedding", str(e))
-        else:
-            set_pipeline_error("unknown", str(e))
-
+        # Set pipeline error (simplified - no need to determine exact stage)
+        set_pipeline_error("processing", str(e))
         raise
 
 
@@ -73,7 +65,19 @@ def main() -> None:
     cmdline.execute(["scrapy", "crawl", "finviz_news"])
 
 
-def run_spider_with_tickers(tickers: List[str]) -> None:
+def run_scraper(tickers: list[str]) -> None:
+    """Run the scraper for specified tickers.
+
+    This is a convenience wrapper around run_spider_with_tickers() with better naming.
+    Scraping always runs synchronously.
+
+    Args:
+        tickers: List of ticker symbols to scrape
+    """
+    run_spider_with_tickers(tickers)
+
+
+def run_spider_with_tickers(tickers: list[str]) -> None:
     """Run the spider with custom tickers using subprocess.
 
     This function runs scrapy in a separate process to avoid reactor issues.

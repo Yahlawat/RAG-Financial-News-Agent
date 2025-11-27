@@ -6,8 +6,8 @@ NEWSPIDER_MODULE = "finnews.scraper.spiders"
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True
 
-# Custom user-agent to mimic a browser
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+# Custom user-agent to mimic a browser (Chrome 131, current as of Nov 2024)
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
 # Crawl respectfully
 CONCURRENT_REQUESTS = 16

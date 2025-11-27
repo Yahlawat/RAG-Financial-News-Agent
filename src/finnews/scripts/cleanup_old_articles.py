@@ -11,6 +11,7 @@ This script performs DELETION ONLY - no re-processing of kept articles:
 """
 
 import json
+import logging
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -18,6 +19,7 @@ from pathlib import Path
 from langchain_chroma import Chroma
 
 from finnews.common.config import ROOT, settings
+from finnews.common.logging import setup_logging
 from finnews.rag.embedder import delete_old_articles_from_chroma, get_embedding_model
 
 
@@ -261,6 +263,9 @@ def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
 def main():
     """CLI entry point."""
     import argparse
+
+    # Setup logging for cleanup script
+    setup_logging(component="scripts", level=logging.INFO, console=True)
 
     parser = argparse.ArgumentParser(
         description="Clean up old articles using selective deletion (no full rebuild)"

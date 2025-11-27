@@ -1,13 +1,16 @@
 """User profile management for portfolio tickers."""
 
 import logging
+import re
 from datetime import datetime
-from typing import List, Optional
 
 from finnews.common.config import settings
 from finnews.common.io_utils import read_json, write_json
 
 logger = logging.getLogger(__name__)
+
+# Directory reference for external use
+USER_PROFILES_DIR = settings.USER_PROFILES_DIR
 
 
 class UserProfile:
@@ -16,9 +19,9 @@ class UserProfile:
     def __init__(
         self,
         user_id: str,
-        portfolio_tickers: Optional[List[str]] = None,
-        created_at: Optional[str] = None,
-        updated_at: Optional[str] = None,
+        portfolio_tickers: list[str] | None = None,
+        created_at: str | None = None,
+        updated_at: str | None = None,
     ):
         self.user_id = user_id
         self.portfolio_tickers = portfolio_tickers or []
@@ -91,32 +94,125 @@ def save_user_profile(profile: UserProfile) -> None:
     logger.info(f"Saved profile for user: {profile.user_id}")
 
 
-def add_tickers(user_id: str, tickers: List[str]) -> UserProfile:
-    """Add tickers to a user's portfolio.
+def validate_ticker(ticker: str) -> tuple[bool, str]:
+    """
+    Validate a ticker symbol.
+
+    Args:
+        ticker: Ticker symbol to validate
+
+    Returns:
+        Tuple of (is_valid, error_message)
+        If valid, error_message is empty string
+    """
+    if not ticker:
+        return False, "Ticker cannot be empty"
+
+    # Normalize to uppercase
+    ticker = ticker.strip().upper()
+
+    # Pattern: 1-5 uppercase letters, optional hyphen followed by 1-2 letters
+    # Examples: AAPL, BRK-A, RUMBW
+    pattern = r"^[A-Z]{1,5}(-[A-Z]{1,2})?$"
+
+    if not re.match(pattern, ticker):
+        return False, f"Invalid ticker format: '{ticker}'. Must be 1-5 uppercase letters, optionally followed by hyphen and 1-2 letters"
+
+    return True, ""
+
+
+def get_all_unique_tickers() -> list[str]:
+    """
+    Get all unique tickers from all user portfolios.
+
+    Returns:
+        List of unique ticker symbols (uppercase, sorted)
+    """
+    tickers = set()
+
+    try:
+        if not USER_PROFILES_DIR.exists():
+            logger.warning("User profiles directory does not exist: %s", USER_PROFILES_DIR)
+            return []
+
+        # Load all user profile files
+        for profile_file in USER_PROFILES_DIR.glob("*_profile.json"):
+            try:
+                data = read_json(str(profile_file))
+                if data:
+                    portfolio_tickers = data.get("portfolio_tickers", [])
+                    tickers.update(t.strip().upper() for t in portfolio_tickers if t.strip())
+
+            except Exception as e:
+                logger.error("Failed to load profile %s: %s", profile_file, e)
+                continue
+
+        ticker_list = sorted(list(tickers))
+        logger.info("Aggregated %d unique tickers from all user portfolios", len(ticker_list))
+        return ticker_list
+
+    except Exception as e:
+        logger.exception("Failed to aggregate tickers: %s", e)
+        return []
+
+
+def add_tickers(
+    user_id: str, tickers: list[str], trigger_scrape: bool = True
+) -> tuple[UserProfile, list[str], list[str]]:
+    """Add tickers to a user's portfolio with validation.
 
     Args:
         user_id: The user's ID
         tickers: List of ticker symbols to add
+        trigger_scrape: Whether to trigger on-demand scraping for new tickers
 
     Returns:
-        Updated UserProfile
+        Tuple of (updated_profile, newly_added_tickers, validation_errors)
     """
     profile = load_user_profile(user_id)
 
-    # Normalize tickers to uppercase and remove duplicates
-    normalized_tickers = [t.strip().upper() for t in tickers if t.strip()]
+    newly_added = []
+    validation_errors = []
 
-    # Add only new tickers
-    for ticker in normalized_tickers:
+    # Process each ticker
+    for ticker in tickers:
+        ticker = ticker.strip()
+        if not ticker:
+            continue
+
+        # Validate ticker format
+        is_valid, error_msg = validate_ticker(ticker)
+        if not is_valid:
+            validation_errors.append(error_msg)
+            continue
+
+        # Normalize to uppercase
+        ticker = ticker.upper()
+
+        # Add only new tickers
         if ticker not in profile.portfolio_tickers:
             profile.portfolio_tickers.append(ticker)
+            newly_added.append(ticker)
             logger.info(f"Added ticker {ticker} to user {user_id}")
 
-    save_user_profile(profile)
-    return profile
+    # Save profile if any tickers were added
+    if newly_added:
+        save_user_profile(profile)
+
+        # Trigger on-demand scraping for new tickers
+        if trigger_scrape and settings.SCRAPE_ON_NEW_TICKER:
+            try:
+                from finnews.scraper.scheduler import scrape_new_tickers
+
+                scrape_new_tickers(newly_added)
+                logger.info(f"Triggered scraping for new tickers: {newly_added}")
+            except Exception as e:
+                logger.error(f"Failed to trigger scraping for new tickers: {e}")
+
+    return profile, newly_added, validation_errors
 
 
-def remove_tickers(user_id: str, tickers: List[str]) -> UserProfile:
+def remove_tickers(user_id: str, tickers: list[str]) -> UserProfile:
     """Remove tickers from a user's portfolio.
 
     Args:
@@ -141,7 +237,7 @@ def remove_tickers(user_id: str, tickers: List[str]) -> UserProfile:
     return profile
 
 
-def get_portfolio_tickers(user_id: str) -> List[str]:
+def get_portfolio_tickers(user_id: str) -> list[str]:
     """Get a user's portfolio tickers.
 
     Args:

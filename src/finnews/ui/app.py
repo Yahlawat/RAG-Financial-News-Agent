@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import time
@@ -8,6 +9,7 @@ import streamlit as st
 from streamlit.web import cli as stcli
 
 from finnews.common.config import settings
+from finnews.common.logging import setup_logging
 from finnews.ui.conversation_history import (
     add_message,
     delete_conversation,
@@ -64,6 +66,7 @@ def render_portfolio_section(user_id: str):
         user_id: The user's ID
     """
     st.subheader("📊 My Portfolio Tickers")
+    st.caption("💡 News is automatically scraped daily and when you add new tickers")
 
     # Load user profile
     profile = load_user_profile(user_id)
@@ -121,120 +124,28 @@ def render_portfolio_section(user_id: str):
     with col2:
         if st.button("➕ Add", use_container_width=True):
             if new_ticker:
-                cleaned_ticker = new_ticker.strip().upper()
+                cleaned_ticker = new_ticker.strip()
                 if cleaned_ticker:
-                    add_tickers_to_profile(user_id, [cleaned_ticker])
-                    st.rerun()
-
-
-def render_scraping_section(user_id: str):
-    """Render the scraping controls section.
-
-    Args:
-        user_id: The user's ID
-    """
-    st.subheader("🔄 Scraping Controls")
-
-    # Check scrape status
-    try:
-        status_response = requests.get(f"{api_base()}/scrape/status", timeout=5)
-        if status_response.status_code == 200:
-            status_data = status_response.json()
-            scrape_status = status_data.get("status", "idle")
-            pipeline_stage = status_data.get("pipeline_stage", "idle")
-            stage_message = status_data.get("stage_message", "Ready")
-            started_at = status_data.get("started_at")
-            completed = status_data.get("completed", 0)
-            total = status_data.get("total", 0)
-            articles_found = status_data.get("articles_found", 0)
-            time_elapsed = status_data.get("time_elapsed_seconds", 0)
-        else:
-            scrape_status = "idle"
-            pipeline_stage = "idle"
-            stage_message = "Ready"
-            started_at = None
-            completed = 0
-            total = 0
-            articles_found = 0
-            time_elapsed = 0
-    except requests.RequestException:
-        # API is unavailable or request failed - default to idle state
-        scrape_status = "idle"
-        pipeline_stage = "idle"
-        stage_message = "Ready"
-        started_at = None
-        completed = 0
-        total = 0
-        articles_found = 0
-        time_elapsed = 0
-
-    if scrape_status == "running":
-        # Show progress with pipeline stage info
-        # Choose icon based on stage
-        if pipeline_stage == "scraping":
-            icon = "🔄"
-        elif pipeline_stage in ["chunking", "chunking_complete"]:
-            icon = "⚙️"
-        elif pipeline_stage == "embedding":
-            icon = "🧠"
-        else:
-            icon = "🔄"
-
-        st.info(f"{icon} {stage_message}")
-
-        # Show progress bar for scraping stage
-        if pipeline_stage == "scraping" and total > 0:
-            progress = completed / total
-            st.progress(progress)
-            st.caption(
-                f"Progress: {completed}/{total} tickers • {articles_found} articles • "
-                f"{int(time_elapsed)}s elapsed"
-            )
-        # Show indeterminate progress for post-processing stages
-        elif pipeline_stage in ["chunking", "chunking_complete", "embedding"]:
-            st.progress(0.5)  # Show half-filled progress bar
-            st.caption(f"Processing... • {int(time_elapsed)}s total elapsed")
-        else:
-            st.caption("Initializing...")
-
-        # Auto-refresh every 3 seconds
-        time.sleep(3)
-        st.rerun()
-
-    elif scrape_status == "completed" or pipeline_stage == "completed":
-        # Show completion message
-        st.success("✅ Pipeline complete! Articles ready for querying")
-        # Reset status after showing message
-        try:
-            requests.post(f"{api_base()}/scrape/reset", timeout=5)
-        except Exception:
-            pass  # Silently fail - status will be reset on next UI load if needed
-
-    else:
-        # Show scrape button
-        profile = load_user_profile(user_id)
-        if not profile.portfolio_tickers:
-            st.warning("Add tickers to your portfolio first!")
-        else:
-            if st.button("🔄 Scrape Now", use_container_width=True):
-                try:
-                    response = requests.post(
-                        f"{api_base()}/scrape/start", json={"user_id": user_id}, timeout=10
+                    # Add ticker with validation
+                    profile, newly_added, validation_errors = add_tickers_to_profile(
+                        user_id, [cleaned_ticker]
                     )
-                    if response.status_code == 200:
-                        result = response.json()
-                        if result.get("status") == "started":
+
+                    # Show validation errors
+                    if validation_errors:
+                        for error in validation_errors:
+                            st.error(error)
+
+                    # Show success message for newly added tickers
+                    if newly_added:
+                        if len(newly_added) == 1:
                             st.success(
-                                f"Started scraping {len(result.get('tickers', []))} tickers!"
+                                f"✅ Added {newly_added[0]}! News will be scraped automatically."
                             )
-                            time.sleep(1)
-                            st.rerun()
-                        elif result.get("status") == "already_running":
-                            st.warning("A scraping job is already in progress")
-                    else:
-                        st.error(f"Failed to start scraping: {response.text}")
-                except Exception as e:
-                    st.error(f"Error starting scrape: {e}")
+                        else:
+                            st.success(f"✅ Added {len(newly_added)} tickers!")
+                        time.sleep(1)
+                        st.rerun()
 
 
 def render_sidebar(user_id: str, current_conversation_id: str):
@@ -242,11 +153,6 @@ def render_sidebar(user_id: str, current_conversation_id: str):
     with st.sidebar:
         # Portfolio ticker management
         render_portfolio_section(user_id)
-
-        st.divider()
-
-        # Scraping controls
-        render_scraping_section(user_id)
 
         st.divider()
 
@@ -411,6 +317,9 @@ def run():
 
 
 def main() -> None:
+    # Setup logging for UI component (console disabled for Streamlit)
+    setup_logging(component="ui", level=logging.INFO, console=False)
+
     script = os.path.abspath(__file__)
     args = [
         "streamlit",

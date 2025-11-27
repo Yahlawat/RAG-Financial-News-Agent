@@ -8,7 +8,6 @@ are needed in the future, update all datetime.now() calls to datetime.now(timezo
 import logging
 import threading
 from datetime import datetime
-from typing import Dict, List, Optional
 
 from finnews.common.config import settings
 from finnews.common.io_utils import read_json, write_json
@@ -24,7 +23,7 @@ class TickerMetadata:
 
     def __init__(
         self,
-        last_scraped: Optional[str] = None,
+        last_scraped: str | None = None,
         articles_count: int = 0,
     ):
         self.last_scraped = last_scraped
@@ -52,8 +51,8 @@ class ScrapeStatus:
     def __init__(
         self,
         status: str = "idle",
-        started_at: Optional[str] = None,
-        tickers_in_progress: Optional[List[str]] = None,
+        started_at: str | None = None,
+        tickers_in_progress: list[str] | None = None,
         completed: int = 0,
         total: int = 0,
         articles_found: int = 0,
@@ -65,7 +64,7 @@ class ScrapeStatus:
         self.completed = completed
         self.total = total
         self.articles_found = articles_found
-        # Pipeline stage: "idle", "scraping", "chunking", "embedding", "completed", "error"
+        # Pipeline stage: "idle", "running", "processing", "completed"
         self.pipeline_stage = pipeline_stage
 
     def to_dict(self) -> dict:
@@ -126,7 +125,7 @@ def _write_metadata(data: dict) -> None:
     write_json(metadata_path, data)
 
 
-def get_ticker_last_scrape(ticker: str) -> Optional[TickerMetadata]:
+def get_ticker_last_scrape(ticker: str) -> TickerMetadata | None:
     """Get the last scrape metadata for a specific ticker.
 
     Args:
@@ -144,7 +143,7 @@ def get_ticker_last_scrape(ticker: str) -> Optional[TickerMetadata]:
         return None
 
 
-def get_tickers_metadata(ticker_list: List[str]) -> Dict[str, Optional[TickerMetadata]]:
+def get_tickers_metadata(ticker_list: list[str]) -> dict[str, TickerMetadata | None]:
     """Get metadata for multiple tickers.
 
     Args:
@@ -201,7 +200,7 @@ def get_scrape_status() -> ScrapeStatus:
         return ScrapeStatus.from_dict(status_data)
 
 
-def start_scrape(tickers: List[str]) -> None:
+def start_scrape(tickers: list[str]) -> None:
     """Mark scraping as started.
 
     Args:
@@ -219,7 +218,7 @@ def start_scrape(tickers: List[str]) -> None:
                 "total": len(tickers),
             },
             "articles_found": 0,
-            "pipeline_stage": "scraping",
+            "pipeline_stage": "running",
         }
 
         _write_metadata(data)
@@ -273,7 +272,7 @@ def reset_scrape_status() -> None:
 
 
 def start_chunking(total_articles: int = 0) -> None:
-    """Mark chunking stage as started.
+    """Mark post-processing (chunking + embedding) stage as started.
 
     Args:
         total_articles: Total number of articles scraped
@@ -282,39 +281,22 @@ def start_chunking(total_articles: int = 0) -> None:
         data = _read_metadata()
         current_scrape = data.get("current_scrape", {})
 
-        current_scrape["pipeline_stage"] = "chunking"
+        current_scrape["pipeline_stage"] = "processing"
         current_scrape["status"] = "running"
         data["current_scrape"] = current_scrape
 
         _write_metadata(data)
-        logger.info(f"Started chunking {total_articles} articles")
+        logger.info(f"Started post-processing {total_articles} articles")
 
 
 def complete_chunking() -> None:
-    """Mark chunking stage as completed."""
-    with _metadata_lock:
-        data = _read_metadata()
-        current_scrape = data.get("current_scrape", {})
-
-        current_scrape["pipeline_stage"] = "chunking_complete"
-        data["current_scrape"] = current_scrape
-
-        _write_metadata(data)
-        logger.info("Chunking completed")
+    """Mark chunking stage as completed (now a no-op, kept for backward compatibility)."""
+    logger.info("Chunking completed (continuing to embedding)")
 
 
 def start_embedding() -> None:
-    """Mark embedding stage as started."""
-    with _metadata_lock:
-        data = _read_metadata()
-        current_scrape = data.get("current_scrape", {})
-
-        current_scrape["pipeline_stage"] = "embedding"
-        current_scrape["status"] = "running"
-        data["current_scrape"] = current_scrape
-
-        _write_metadata(data)
-        logger.info("Started embedding generation")
+    """Mark embedding stage as started (now a no-op since processing stage covers both)."""
+    logger.info("Started embedding generation")
 
 
 def complete_pipeline(status: str = "completed") -> None:
@@ -352,7 +334,7 @@ def set_pipeline_error(stage: str, error_message: str = "") -> None:
         data = _read_metadata()
         current_scrape = data.get("current_scrape", {})
 
-        current_scrape["pipeline_stage"] = f"error_{stage}"
+        current_scrape["pipeline_stage"] = "error"
         current_scrape["status"] = "error"
         data["current_scrape"] = current_scrape
 

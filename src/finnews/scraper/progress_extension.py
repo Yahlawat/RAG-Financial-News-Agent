@@ -17,6 +17,7 @@ class ProgressTrackerExtension:
     def __init__(self):
         self.items_scraped = 0
         self.ticker_counts: Dict[str, int] = {}
+        self.total_tickers = 0  # Track expected total tickers
 
     @classmethod
     def from_crawler(cls, crawler: Crawler):
@@ -48,6 +49,13 @@ class ProgressTrackerExtension:
         self.items_scraped = 0
         self.ticker_counts = {}
 
+        # Store expected total ticker count from spider
+        if hasattr(spider, "tickers"):
+            self.total_tickers = len(spider.tickers)
+            logger.info(f"Expecting to scrape {self.total_tickers} tickers")
+        else:
+            self.total_tickers = 0
+
     def item_scraped(self, item, spider):
         """Called when an item is scraped.
 
@@ -67,8 +75,21 @@ class ProgressTrackerExtension:
         if self.items_scraped % 5 == 0:
             # Calculate how many tickers have been processed
             tickers_completed = len(self.ticker_counts)
-            update_scrape_progress(completed=tickers_completed, articles_found=self.items_scraped)
-            logger.info(f"Progress: {self.items_scraped} articles, {tickers_completed} tickers")
+
+            # Update with total ticker count for accurate progress tracking
+            if self.total_tickers > 0:
+                update_scrape_progress(
+                    completed=tickers_completed,
+                    articles_found=self.items_scraped,
+                )
+                completion_pct = (tickers_completed / self.total_tickers) * 100
+                logger.info(
+                    f"Progress: {self.items_scraped} articles, "
+                    f"{tickers_completed}/{self.total_tickers} tickers ({completion_pct:.1f}%)"
+                )
+            else:
+                update_scrape_progress(completed=tickers_completed, articles_found=self.items_scraped)
+                logger.info(f"Progress: {self.items_scraped} articles, {tickers_completed} tickers")
 
     def spider_closed(self, spider, reason):
         """Called when the spider is closed.
@@ -86,4 +107,10 @@ class ProgressTrackerExtension:
             update_ticker_scrape(ticker, count)
 
         # Final progress update
-        update_scrape_progress(completed=len(self.ticker_counts), articles_found=self.items_scraped)
+        if self.total_tickers > 0:
+            update_scrape_progress(
+                completed=len(self.ticker_counts),
+                articles_found=self.items_scraped,
+            )
+        else:
+            update_scrape_progress(completed=len(self.ticker_counts), articles_found=self.items_scraped)

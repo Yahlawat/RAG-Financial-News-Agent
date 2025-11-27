@@ -4,12 +4,12 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Iterator
+from typing import Any, Iterator
 
 logger = logging.getLogger(__name__)
 
 
-def read_jsonl(file_path: str) -> Iterator[Dict[str, Any]]:
+def read_jsonl(file_path: str) -> Iterator[dict[str, Any]]:
     """Read JSONL file line by line with error handling.
 
     Args:
@@ -31,7 +31,7 @@ def read_jsonl(file_path: str) -> Iterator[Dict[str, Any]]:
                 continue
 
 
-def write_jsonl(file_path: str, items: Iterator[Dict[str, Any]]) -> None:
+def write_jsonl(file_path: str, items: Iterator[dict[str, Any]]) -> None:
     """Write items to JSONL file.
 
     Args:
@@ -44,7 +44,7 @@ def write_jsonl(file_path: str, items: Iterator[Dict[str, Any]]) -> None:
             f.write(json.dumps(item, ensure_ascii=False) + "\n")
 
 
-def append_jsonl(file_path: str, item: Dict[str, Any]) -> None:
+def append_jsonl(file_path: str, item: dict[str, Any]) -> None:
     """Append a single item to a JSONL file.
 
     Args:
@@ -67,7 +67,7 @@ def ensure_file_dir(file_path: str) -> None:
         Path(parent_dir).mkdir(parents=True, exist_ok=True)
 
 
-def read_json(file_path: str) -> Dict[str, Any]:
+def read_json(file_path: str) -> dict[str, Any]:
     """Read JSON file with error handling.
 
     Args:
@@ -87,7 +87,7 @@ def read_json(file_path: str) -> Dict[str, Any]:
         return {}
 
 
-def write_json(file_path: str, data: Dict[str, Any], indent: int = 2) -> None:
+def write_json(file_path: str, data: dict[str, Any], indent: int = 2) -> None:
     """Write data to JSON file with error handling.
 
     Args:

@@ -49,12 +49,15 @@ cp env.example .env
 OPENAI_API_KEY=your_openai_api_key_here
 ```
 
-### 3. Data Collection & Processing
+### 3. Ticker Management
 
+Add tickers to your portfolio through the web interface. The system will automatically:
+- Scrape news for new tickers immediately when added
+- Run daily scheduled scrapes for all portfolio tickers (2 AM UTC by default)
+- Process and embed articles automatically after scraping
+
+**Manual Processing** (optional - only needed if automatic processing is disabled):
 ```bash
-# Scrape financial news (this may take several hours for full S&P500, reduce number of tickers for faster scraping)
-finnews-scrape
-
 # Process and chunk articles
 finnews-chunk
 
@@ -78,17 +81,22 @@ finnews-ui
 After installing in editable mode, you can use these convenient commands:
 
 ```bash
-finnews-scrape      # Run Scrapy spider
-finnews-chunk       # Build chunks from raw articles
-finnews-embed       # Build/update Chroma index
+finnews-scrape      # Manual scrape all portfolio tickers (dev/testing only)
+finnews-chunk       # Build chunks from raw articles (manual processing)
+finnews-embed       # Build/update Chroma index (manual processing)
 finnews-cleanup     # Clean up old articles (selective deletion)
-finnews-api         # Start FastAPI server
+finnews-api         # Start FastAPI server (includes automated scraping scheduler)
 finnews-ui          # Start Streamlit web interface
 ```
 
+**Note on Scraping**:
+- **Production**: Scraping is fully automated when the API server runs (daily at 2 AM UTC + when tickers are added)
+- **Development/Testing**: Use `finnews-scrape` to manually trigger scraping of all portfolio tickers
+  - Requires at least one user profile with tickers (create via web UI)
+  - Useful for debugging and testing without waiting for scheduled scrapes
+
 ### Scrapy config location change
-- The former `config/` directory has been removed.
-- `scrapy.cfg` now resides at the repository root. Run Scrapy commands from the repo root (e.g., `scrapy crawl finviz_news`) or set `SCRAPY_SETTINGS_MODULE=finnews.scraper.settings` if running elsewhere.
+- `scrapy.cfg` resides at the repository root. Run Scrapy commands from the repo root (e.g., `scrapy crawl finviz_news`) or set `SCRAPY_SETTINGS_MODULE=finnews.scraper.settings` if running elsewhere.
 
 ## Project Architecture
 
@@ -106,7 +114,7 @@ Financial-News-Agent/
 │   ├── processed_chunks/  # Text chunks
 │   ├── chroma_store/      # Vector database
 │   ├── chat_memory/       # Conversation history
-│   └── tickers/           # S&P 500 tickers
+│   └── user_profiles/     # User portfolio tickers
 ├── tests/                 # Test suite
 └── docs/                  # Documentation
 ```
@@ -116,7 +124,10 @@ Financial-News-Agent/
 ## Key Components
 
 ### Data Pipeline
-- **Scraper**: Automated collection of financial news from FinViz with duplicate detection
+- **Automated Scraper**: Scheduled news collection from FinViz with duplicate detection
+  - Daily scraping at 2 AM UTC (configurable)
+  - Immediate scraping when users add new tickers to their portfolio
+  - Scrapes all unique tickers across all user portfolios
 - **Chunker**: Intelligent text segmentation optimized for semantic search
 - **Embedder**: HuggingFace-based vector embeddings using BAAI/bge-base-en-v1.5
 
@@ -130,10 +141,21 @@ Financial-News-Agent/
 - **FastAPI**: RESTful API for integration with external applications
 
 ### Ticker Management
-The system uses S&P 500 companies by default. Update `data/tickers/tickers.csv` to modify the scope:
+The system uses **user-defined portfolios** for ticker management:
 
+- Add tickers through the Streamlit web interface
+- Each user maintains their own portfolio of tickers
+- System automatically aggregates all unique tickers across users for scraping
+- Ticker validation ensures correct format (1-5 uppercase letters)
+- News is scraped immediately when new tickers are added
+
+**Scheduler Configuration** (optional):
 ```bash
-python data/tickers/get_sp500_tickers.py  # Refresh S&P 500 list
+# In .env file
+SCRAPE_SCHEDULE_ENABLED=True  # Enable/disable scheduled scraping
+SCRAPE_SCHEDULE_HOUR=2  # Hour to run daily scrape (UTC, 0-23)
+SCRAPE_SCHEDULE_MINUTE=0  # Minute to run daily scrape (0-59)
+SCRAPE_ON_NEW_TICKER=True  # Scrape immediately when tickers added
 ```
 
 ## Configuration

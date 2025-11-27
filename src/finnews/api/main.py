@@ -1,7 +1,6 @@
 # app.py
 import logging
 from contextlib import asynccontextmanager
-from typing import List, Optional
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -9,11 +8,13 @@ from pydantic import BaseModel
 
 from finnews.api.scraper_endpoints import router as scraper_router
 from finnews.common.config import settings
+from finnews.common.logging import setup_logging
 from finnews.rag.rag_chain import rag_chat
 from finnews.rag.retriever import load_vectorstore
 from finnews.ui.user_profile import get_portfolio_tickers
 
-logging.basicConfig(level=logging.INFO)
+# Setup logging for API component
+setup_logging(component="api", level=logging.INFO, console=True, unified=True)
 logger = logging.getLogger(__name__)
 
 # Vector stores loaded at startup
@@ -31,10 +32,19 @@ async def lifespan(app: FastAPI):
     chat_store = load_vectorstore(str(settings.CHAT_MEMORY_DIR))
     logger.info("Vector stores initialized")
 
+    # Startup: Initialize automated scraping scheduler
+    from finnews.scraper.scheduler import start_scheduler, stop_scheduler
+
+    logger.info("Starting automated scraping scheduler")
+    start_scheduler()
+    logger.info("Scheduler started")
+
     yield
 
-    # Shutdown: cleanup if needed
-    logger.info("Shutting down")
+    # Shutdown: Stop scheduler and cleanup
+    logger.info("Shutting down scheduler")
+    stop_scheduler()
+    logger.info("Shutdown complete")
 
 
 app = FastAPI(lifespan=lifespan)
@@ -44,7 +54,7 @@ app.include_router(scraper_router)
 
 
 @app.get("/health")
-async def health_check():
+def health_check():
     """Health check endpoint to verify API and vector stores are ready."""
     return {
         "status": "healthy",
@@ -57,13 +67,13 @@ class ChatRequest(BaseModel):
     question: str
     user_id: str
     conversation_id: str
-    tickers: Optional[List[str]] = None
-    top_k: Optional[int] = 5
-    chat_k: Optional[int] = 3
+    tickers: list[str] | None = None
+    top_k: int | None = 5
+    chat_k: int | None = 3
 
 
 @app.post("/chat")
-async def chat_endpoint(req: ChatRequest):
+def chat_endpoint(req: ChatRequest):
     logger.info("Chat request from user %s in conversation %s", req.user_id, req.conversation_id)
 
     # Auto-load user's portfolio tickers if not explicitly provided
@@ -91,6 +101,26 @@ async def chat_endpoint(req: ChatRequest):
     return response
 
 
-def run(host: str = settings.API_HOST, port: int = settings.API_PORT):
-    """Run the FastAPI app with uvicorn."""
-    uvicorn.run(app, host=host, port=port)
+def run(
+    host: str = settings.API_HOST,
+    port: int = settings.API_PORT,
+    reload: bool = False,
+    workers: int = 1,
+):
+    """Run the FastAPI app with uvicorn.
+
+    Args:
+        host: Host to bind to
+        port: Port to bind to
+        reload: Enable auto-reload for development
+        workers: Number of worker processes (production)
+    """
+    uvicorn.run(
+        "finnews.api.main:app",  # String import for reload support
+        host=host,
+        port=port,
+        reload=reload,
+        workers=workers,
+        log_level=settings.LOG_LEVEL.lower(),
+        access_log=True,
+    )

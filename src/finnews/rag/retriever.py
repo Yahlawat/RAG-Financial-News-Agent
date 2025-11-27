@@ -1,9 +1,8 @@
 import math
 from datetime import datetime, timezone
-from typing import Optional
 from uuid import uuid4
 
-from langchain.schema import Document
+from langchain_core.documents import Document
 from langchain_chroma import Chroma
 
 from finnews.common.logging import get_logger
@@ -25,7 +24,7 @@ def load_vectorstore(persist_directory: str, model_name: str | None = None) -> C
 
 def article_chunk_reranker(
     docs: list[Document],
-    target_tickers: Optional[list[str]] = None,
+    target_tickers: list[str] | None = None,
 ) -> list[Document]:
     logger.debug("Reranking %d documents for tickers: %s", len(docs), target_tickers)
 
@@ -41,7 +40,7 @@ def article_chunk_reranker(
                 pub_date = datetime.fromisoformat(pub_date_str)
                 days_old = max((datetime.now() - pub_date).days, 1)
                 s -= 0.5 * math.log(days_old)
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             logger.warning("Failed to parse publication date: %s", e)
 
         # Ticker-match boost
@@ -63,7 +62,7 @@ def article_chunk_reranker(
 
 
 def article_chunk_retriever(
-    vectorstore: Chroma, query: str, target_tickers: Optional[list[str]] = None, top_n: int = 5
+    vectorstore: Chroma, query: str, target_tickers: list[str] | None = None, top_n: int = 5
 ) -> list[Document]:
     logger.info("Retrieving articles for query: %s", query)
 
@@ -125,7 +124,7 @@ def retrieve_chat_memory(
 
 
 def get_full_chat_history(
-    chat_store: Chroma, conversation_id: str, user_id: Optional[str] = None
+    chat_store: Chroma, conversation_id: str, user_id: str | None = None
 ) -> list[Document]:
     logger.debug("Fetching full chat history for conversation %s", conversation_id)
     if user_id:

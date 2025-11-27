@@ -1,7 +1,6 @@
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from finnews.common.config import settings
 
@@ -18,7 +17,7 @@ def _get_conversation_file(user_id: str) -> Path:
     return CONVERSATIONS_DIR / f"{user_id}_conversations.json"
 
 
-def load_user_conversations(user_id: str) -> List[Dict]:
+def load_user_conversations(user_id: str) -> list[dict]:
     """Load all conversations for a user.
 
     Returns:
@@ -43,7 +42,7 @@ def load_user_conversations(user_id: str) -> List[Dict]:
         return []
 
 
-def save_user_conversations(user_id: str, conversations: List[Dict]):
+def save_user_conversations(user_id: str, conversations: list[dict]):
     """Save all conversations for a user."""
     _ensure_conversations_dir()
     conv_file = _get_conversation_file(user_id)
@@ -57,7 +56,7 @@ def save_user_conversations(user_id: str, conversations: List[Dict]):
         logging.warning(f"Failed to save conversations for user {user_id}: {e}")
 
 
-def get_conversation(user_id: str, conversation_id: str) -> Optional[Dict]:
+def get_conversation(user_id: str, conversation_id: str) -> dict | None:
     """Get a specific conversation by ID."""
     conversations = load_user_conversations(user_id)
     for conv in conversations:
@@ -66,7 +65,7 @@ def get_conversation(user_id: str, conversation_id: str) -> Optional[Dict]:
     return None
 
 
-def create_conversation(user_id: str, conversation_id: str) -> Dict:
+def create_conversation(user_id: str, conversation_id: str) -> dict:
     """Create a new empty conversation."""
     now = datetime.now(timezone.utc).isoformat()
     new_conv = {
@@ -89,7 +88,7 @@ def add_message(
     conversation_id: str,
     role: str,
     content: str,
-    sources: Optional[List[Dict]] = None,
+    sources: list[dict] | None = None,
 ):
     """Add a message to a conversation.
 
@@ -145,7 +144,7 @@ def delete_conversation(user_id: str, conversation_id: str):
     save_user_conversations(user_id, conversations)
 
 
-def get_conversation_messages(user_id: str, conversation_id: str) -> List[Dict]:
+def get_conversation_messages(user_id: str, conversation_id: str) -> list[dict]:
     """Get all messages from a conversation."""
     conv = get_conversation(user_id, conversation_id)
     if conv:

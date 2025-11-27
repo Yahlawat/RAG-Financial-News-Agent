@@ -42,9 +42,7 @@ Financial-News-Agent/
 │   ├── chat_sessions/       # Session management
 │   │   └── conversations/   # Conversation history storage
 │   ├── backups/             # Data backups (created by cleanup)
-│   └── tickers/             # S&P 500 ticker symbols
-│       ├── get_sp500_tickers.py # Ticker fetching utility
-│       └── tickers.csv      # Stored ticker list
+│   └── user_profiles/       # User portfolio tickers (JSON files)
 ├── tests/                    # Test suite
 │   ├── test_common/         # Common module tests
 │   ├── test_rag/            # RAG component tests
@@ -90,13 +88,21 @@ Financial-News-Agent/
 - **Dependencies**: LangChain, ChromaDB, HuggingFace Transformers
 
 ### Scraper (`src/finnews/scraper/`)
-- **Purpose**: Financial news collection from FinViz
+- **Purpose**: Automated financial news collection from FinViz
 - **Key Files**:
+  - `scheduler.py` - Automated scraping scheduler (daily + on-demand)
   - `finviz_spider.py` - Main spider with URL deduplication
   - `pipelines.py` - JSONL output pipeline
-  - `utils.py` - Common scraper utilities (URL loading)
-- **Features**: Incremental scraping, ticker extraction, date parsing
-- **Dependencies**: Scrapy
+  - `runner.py` - Scraper execution wrapper
+  - `progress_extension.py` - Real-time progress tracking
+  - `metadata.py` - Scrape metadata and status management
+- **Features**:
+  - Automated daily scraping (2 AM UTC default)
+  - Immediate scraping when users add new tickers
+  - Aggregates unique tickers from all user portfolios
+  - Incremental scraping with duplicate detection
+  - Ticker validation and progress tracking
+- **Dependencies**: Scrapy, APScheduler
 
 ### Common (`src/finnews/common/`)
 - **Purpose**: Shared utilities and configuration
@@ -111,20 +117,27 @@ Financial-News-Agent/
 ### Scripts (`src/finnews/scripts/`)
 - **Purpose**: CLI utilities for data pipeline
 - **Key Files**:
-  - `scrape.py` - Run news scraper
+  - `scrape.py` - Manual scraper for development/testing (loads tickers from user portfolios)
   - `chunk.py` - Process raw articles into chunks
   - `embed.py` - Generate embeddings and build vector store
   - `cleanup_old_articles.py` - Retention management with selective deletion
 - **Features**: Backup creation, selective deletion, no re-processing
+- **Note**: For production, scraping is fully automated via the scheduler (runs with API server). The manual `finnews-scrape` command is available for development and testing purposes only.
 
 ## Data Flow
 
-1. **Scraping**: `scraper/` → `data/raw_news/articles.jsonl`
-2. **Processing**: `rag/chunker.py` → `data/processed_chunks/chunked_articles.jsonl`
-3. **Embedding**: `rag/embedder.py` → `data/chroma_store/`
-4. **Querying**: `ui/` or `api/` → `rag/rag_chain.py` → `data/chroma_store/`
-5. **Memory**: `rag/retriever.py` → `data/chat_memory/`
-6. **Cleanup**: `scripts/cleanup_old_articles.py` → selective deletion from all data stores
+### Automated Pipeline
+1. **User adds tickers** → `ui/user_profile.py` → `data/user_profiles/{user_id}_profile.json`
+2. **Automated Scraping** (2 triggers):
+   - **Daily scheduled** (2 AM UTC): `scheduler.py` → aggregates all unique tickers → scrapes
+   - **On-demand** (new ticker added): `user_profile.add_tickers()` → triggers immediate scrape
+3. **Scraping**: `scraper/` → `data/raw_news/articles.jsonl`
+4. **Auto-Processing** (if enabled):
+   - `rag/chunker.py` → `data/processed_chunks/chunked_articles.jsonl`
+   - `rag/embedder.py` → `data/chroma_store/`
+5. **Querying**: `ui/` or `api/` → `rag/rag_chain.py` → `data/chroma_store/`
+6. **Memory**: `rag/retriever.py` → `data/chat_memory/`
+7. **Cleanup**: `scripts/cleanup_old_articles.py` → selective deletion from all data stores
 
 ## Configuration
 
@@ -135,12 +148,20 @@ Financial-News-Agent/
 - API host and port
 - Streamlit port
 - Data paths
+- **Scraping Scheduler Settings**:
+  - `SCRAPE_SCHEDULE_ENABLED` - Enable/disable automated scraping (default: True)
+  - `SCRAPE_SCHEDULE_HOUR` - Daily scrape hour in UTC (default: 2)
+  - `SCRAPE_SCHEDULE_MINUTE` - Daily scrape minute (default: 0)
+  - `SCRAPE_ON_NEW_TICKER` - Trigger scraping when tickers added (default: True)
 
 ### Environment Variables (`.env`)
-See `env.example` for template:
+See `.env.example` for template:
 - `OPENAI_API_KEY` - Required for LLM
 - `LLM_MODEL` - Optional model override
 - `EMBEDDING_MODEL` - Optional embedding model override
+- `SCRAPE_SCHEDULE_ENABLED` - Enable/disable automated scraping
+- `SCRAPE_SCHEDULE_HOUR` - Hour for daily scraping (0-23 UTC)
+- `SCRAPE_ON_NEW_TICKER` - Scrape immediately when tickers added
 
 ### Scrapy Configuration (`scrapy.cfg`)
 Project-level Scrapy settings

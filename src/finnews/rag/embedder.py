@@ -1,15 +1,18 @@
 import logging
 import os
+import re
 
-from langchain.schema import Document
+from langchain_core.documents import Document
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 from tqdm import tqdm
 
 from finnews.common.config import settings
 from finnews.common.io_utils import read_jsonl
+from finnews.common.logging import setup_logging
 
-logging.basicConfig(level=logging.INFO)
+# Setup logging for RAG component
+setup_logging(component="rag", level=logging.INFO, console=True)
 logger = logging.getLogger(__name__)
 
 
@@ -50,8 +53,11 @@ def load_chunks_from_file(file_path: str):
             if not chunk:
                 continue
 
-            title = metadata.get("title", "").replace(" ", "_")[:80]
-            doc_id = f"{title}_{idx}"
+            # Sanitize title for use in document ID
+            # Remove special characters that can cause SQLite/ChromaDB issues
+            title = metadata.get("title", "")
+            title_clean = re.sub(r'[^a-zA-Z0-9_-]', '_', title)[:80]
+            doc_id = f"{title_clean}_{idx}"
 
             documents.append(Document(page_content=chunk, metadata=metadata))
             ids.append(doc_id)
@@ -111,7 +117,7 @@ def build_chroma_index(
     input_file: str,
     output_path: str,
     model_name: str | None = None,
-    batch_size: int = 32,
+    batch_size: int = 10,
 ) -> Chroma:
     documents, ids = load_chunks_from_file(input_file)
     logger.info(f"Loaded {len(documents)} documents from file.")
@@ -126,7 +132,8 @@ def build_chroma_index(
 
     try:
         existing_ids = set(vectorstore.get()["ids"])
-    except Exception:
+    except (KeyError, AttributeError, RuntimeError) as e:
+        logger.warning(f"Could not load existing IDs: {e}")
         existing_ids = set()
 
     new_documents = []
@@ -147,7 +154,13 @@ def build_chroma_index(
         total=len(new_documents) // batch_size + 1,
         desc="Indexing in batches",
     ):
-        vectorstore.add_documents(documents=doc_batch, ids=id_batch)
+        try:
+            vectorstore.add_documents(documents=doc_batch, ids=id_batch)
+        except Exception as e:
+            logger.error(f"Error adding batch to ChromaDB: {e}")
+            logger.error(f"Batch size: {len(doc_batch)}")
+            logger.error(f"Sample IDs from failed batch: {id_batch[:5]}")
+            raise
 
     # Note: ChromaDB 0.4.24+ auto-persists changes, no need to call persist()
     logger.info(f"Added {len(new_documents)} new documents to Chroma DB.")
