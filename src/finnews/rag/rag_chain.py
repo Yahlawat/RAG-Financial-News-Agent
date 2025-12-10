@@ -1,26 +1,49 @@
-import os
 import logging
-from datetime import datetime
+import os
 from typing import Optional
 
 from langchain_chroma import Chroma
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
-from dotenv import load_dotenv
 from finnews.common.config import settings
-
-load_dotenv()
-
+from finnews.common.logging import setup_logging
 from finnews.rag.retriever import (
-    load_vectorstore,
-    article_chunk_retriever,
-    retrieve_chat_memory,
     add_chat_memory,
+    article_chunk_retriever,
+    load_vectorstore,
+    retrieve_chat_memory,
 )
 
-logging.basicConfig(level=logging.INFO)
+# Setup logging for RAG component
+setup_logging(component="rag", level=logging.INFO, console=True)
 logger = logging.getLogger(__name__)
+
+
+def format_doc_with_metadata(doc, doc_type: str = "news") -> str:
+    """
+    Format a document with its metadata for better LLM context awareness.
+
+    Args:
+        doc: Document object with page_content and metadata
+        doc_type: Either "chat" or "news"
+
+    Returns:
+        Formatted string with metadata headers
+    """
+    if doc_type == "chat":
+        role = doc.metadata.get("role", "unknown").upper()
+        return f"[{role}]: {doc.page_content}"
+    else:  # news
+        title = doc.metadata.get("title", "Unknown Article")
+        date = doc.metadata.get("published_date", "Unknown date")
+        tickers = doc.metadata.get("relevant_tickers", "")
+
+        # Parse tickers from comma-separated string
+        ticker_list = [t.strip() for t in tickers.split(",") if t.strip()]
+        ticker_str = f" ({', '.join(ticker_list)})" if ticker_list else ""
+
+        return f"[Article: {title}{ticker_str} - {date}]\n{doc.page_content}"
 
 
 def rag_chat(
@@ -35,60 +58,68 @@ def rag_chat(
 ) -> dict:
     logger.info("Processing question for conversation %s", conversation_id)
     if article_store is None:
-        article_store = load_vectorstore(str(settings.chroma_store))
+        article_store = load_vectorstore(str(settings.CHROMA_DIR))
     if chat_store is None:
-        chat_store = load_vectorstore(str(settings.chat_memory))
+        chat_store = load_vectorstore(str(settings.CHAT_MEMORY_DIR))
 
     past_qas = retrieve_chat_memory(chat_store, conversation_id, query=question, k=chat_k)
-    chat_context = "\n\n".join(doc.page_content for doc in past_qas) if past_qas else ""
 
+    # Format chat history with metadata
+    if past_qas:
+        formatted_chat = "\n\n".join(
+            format_doc_with_metadata(doc, doc_type="chat") for doc in past_qas
+        )
+        chat_context = f"=== CONVERSATION HISTORY ===\n(Previous exchanges in this conversation)\n\n{formatted_chat}"
+    else:
+        chat_context = ""
+
+    # Retrieve and format news articles with metadata
     news_docs = article_chunk_retriever(
         article_store, query=question, target_tickers=target_tickers, top_n=top_k
     )
-    news_context = "\n\n".join(doc.page_content for doc in news_docs)
+    formatted_news = "\n\n".join(
+        format_doc_with_metadata(doc, doc_type="news") for doc in news_docs
+    )
+    news_context = f"=== RELEVANT NEWS ARTICLES ===\n(Recent financial news excerpts)\n\n{formatted_news}"
 
+    # Combine contexts
     if chat_context:
-        combined_context = (
-            f"Previous Q&A (same conversation):\n\n{chat_context}\n\n"
-            f"News excerpts:\n\n{news_context}"
-        )
+        combined_context = f"{chat_context}\n\n{news_context}"
     else:
-        combined_context = f"News excerpts:\n\n{news_context}"
+        combined_context = news_context
 
     prompt_template = PromptTemplate.from_template(
-        """You're a helpful assistant with deep expertise in financial news. Using the information provided below, answer the user's question in a clear, structured way.
+        """You are a financial news assistant specializing in company news and market developments. Your role is to provide factual, well-structured summaries based on the information provided.
 
-        Do not include source links here — they will be shared separately.
+GUIDELINES:
+- Answer using ONLY the information in the context below
+- Structure your response with clear paragraphs or bullet points for readability
+- When discussing specific financial data (earnings, stock prices, percentages), include the exact figures mentioned
+- Note publication dates when timing is relevant to the question (e.g., "most recent", "this week")
+- Distinguish between factual reporting and opinion/analysis from source articles
+- If multiple sources present different perspectives or information, acknowledge both viewpoints
+- If the context lacks sufficient information to fully answer the question, clearly state what information is missing
+- Use conversation history to understand follow-up questions and maintain context
+- Important: This information reflects article publication dates and may not represent current conditions
+- Do NOT provide investment advice or buy/sell recommendations
+- Do NOT include article URLs or source links (these are provided separately)
 
-        Context:
-        {combined_context}
+Context:
+{combined_context}
 
-        User question: {question}
+Question: {question}
 
-        Your response:"""
+Response:"""
     )
 
-    api_key = settings.openai_api_key or os.getenv("OPENAI_API_KEY")
+    api_key = settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY")
 
-    # Lazy import to avoid hard dependency during tests; provide fallback
-    llm = None
-    if api_key:
-        try:
-            from langchain_openai import ChatOpenAI  # type: ignore
-            llm = ChatOpenAI(model=settings.llm_model, temperature=0.0, api_key=api_key)
-        except Exception:
-            llm = None
-    if llm is None:
-        class _DummyLLM:
-            def __ror__(self, other):
-                class _C:
-                    def invoke(self_inner, _):
-                        class _R:
-                            content = "dummy answer"
-                        return _R()
-                return _C()
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY is required but not set in config or environment")
 
-        llm = _DummyLLM()
+    from langchain_openai import ChatOpenAI  # type: ignore
+
+    llm = ChatOpenAI(model=settings.LLM_MODEL, temperature=0.0, api_key=api_key)
 
     chain = (
         {
@@ -120,28 +151,14 @@ def rag_chat(
 
     sources = []
     for doc in news_docs:
-        title = str(doc.metadata.get("title", "")).strip()
-        url = str(doc.metadata.get("url", "")).strip()
-        published_str = str(doc.metadata.get("published_date", ""))
-        published_str = published_str.strip() if published_str else ""
-
-        published_date = None
-        if published_str:
-            try:
-                published_date = datetime.fromisoformat(published_str).date().isoformat()
-            except ValueError:
-                pass
-
-        if title and url and published_date:
-            sources.append({"title": title, "url": url, "published_date": published_date})
-        elif title and url:
-            sources.append(
-                {
-                    "title": title,
-                    "url": url,
-                    "published_date": "(published_date not available)",
-                }
-            )
+        source = {
+            "title": doc.metadata.get("title", ""),
+            "url": doc.metadata.get("url", ""),
+        }
+        if pub_date := doc.metadata.get("published_date"):
+            source["published_date"] = pub_date
+        if source["title"] and source["url"]:
+            sources.append(source)
 
     return {
         "conversation_id": conversation_id,
@@ -150,4 +167,3 @@ def rag_chat(
         "answer": answer_output,
         "sources": sources,
     }
-

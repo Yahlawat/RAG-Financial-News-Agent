@@ -1,5 +1,6 @@
 import scrapy
 
+
 class NewsArticleItem(scrapy.Item):
     title = scrapy.Field()
     body = scrapy.Field()
@@ -9,4 +10,3 @@ class NewsArticleItem(scrapy.Item):
     published_date = scrapy.Field()
     main_ticker = scrapy.Field()
     relevant_tickers = scrapy.Field()
-

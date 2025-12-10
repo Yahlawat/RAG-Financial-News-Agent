@@ -1,6 +1,0 @@
-[console_scripts]
-finnews-api = finnews.api.main:run
-finnews-chunk = finnews.rag.chunker:main
-finnews-embed = finnews.rag.embedder:main
-finnews-scrape = finnews.scraper.runner:main
-finnews-ui = finnews.ui.app:main

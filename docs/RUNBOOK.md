@@ -46,6 +46,7 @@ OPENAI_API_KEY=your_openai_api_key_here
 Optional settings:
 ```bash
 LLM_MODEL=gpt-4o-mini
+EMBEDDING_MODEL=BAAI/bge-base-en-v1.5
 API_PORT=8000
 STREAMLIT_PORT=8501
 ```
@@ -88,6 +89,27 @@ finnews-embed
 python src/finnews/rag/embedder.py
 ```
 
+#### 4. Clean Up Old Articles (Optional)
+```bash
+# Using console script (keeps last 30 days by default)
+finnews-cleanup
+
+# Custom retention period
+finnews-cleanup --days 60
+
+# Skip backups
+finnews-cleanup --no-backup
+
+# Or direct Python
+python src/finnews/scripts/cleanup_old_articles.py --days 30
+```
+
+**Features:**
+- Selective deletion (no re-processing needed)
+- Automatic backups before cleanup
+- Old backup removal (keeps 6 months)
+- Filters raw articles, chunks, and vector DB
+
 ### Application Services
 
 #### API Server (FastAPI)
@@ -122,7 +144,9 @@ streamlit run src/finnews/ui/app.py --server.port 8502
 | **Processed Chunks** | `data/processed_chunks/chunked_articles.jsonl` | JSONL |
 | **Vector DB (Articles)** | `data/chroma_store/` | ChromaDB |
 | **Vector DB (Chat)** | `data/chat_memory/` | ChromaDB |
-| **Sessions** | `data/chat_sessions/chat_sessions.json` | JSON |
+| **Active Sessions** | `data/chat_sessions/chat_sessions.json` | JSON |
+| **Conversation History** | `data/chat_sessions/conversations/` | JSON |
+| **Backups** | `data/backups/` | Various |
 | **Tickers** | `data/tickers/tickers.csv` | CSV |
 
 ## Troubleshooting
@@ -169,8 +193,9 @@ rm -rf data/raw_news/* data/processed_chunks/* data/chroma_store/* data/chat_mem
 
 #### Reset Sessions Only
 ```bash
-# Clear chat history
+# Clear active sessions and conversation history
 rm -f data/chat_sessions/chat_sessions.json
+rm -rf data/chat_sessions/conversations/*
 rm -rf data/chat_memory/*
 ```
 
@@ -184,6 +209,61 @@ finnews-scrape
 ```
 
 ## Development
+
+### Code Architecture
+
+#### Common Utilities (`src/finnews/common/`)
+The project uses centralized utility modules for consistent error handling and code reuse:
+
+**I/O Utilities** (`io_utils.py`):
+```python
+from finnews.common.io_utils import read_jsonl, write_jsonl, read_json, write_json, ensure_file_dir
+
+# Read JSONL files with error handling
+for item in read_jsonl("data/articles.jsonl"):
+    process(item)
+
+# Write JSONL files
+write_jsonl("output.jsonl", items)
+
+# Ensure directory exists before writing
+ensure_file_dir("path/to/file.json")
+```
+
+**Logging** (`logging.py`):
+```python
+from finnews.common.logging import get_logger
+
+logger = get_logger(__name__)
+logger.info("Processing started")
+```
+
+**Configuration** (`config.py`):
+```python
+from finnews.common.config import settings
+
+# All settings available
+api_key = settings.OPENAI_API_KEY
+model = settings.EMBEDDING_MODEL
+```
+
+#### Scraper Utilities (`src/finnews/scraper/utils.py`)
+```python
+from finnews.scraper.utils import load_existing_urls
+
+# Load and deduplicate URLs
+existing = load_existing_urls("articles.jsonl")
+if url not in existing:
+    scrape(url)
+```
+
+#### RAG Utilities (`src/finnews/rag/`)
+```python
+from finnews.rag.embedder import get_embedding_model
+
+# Get configured embedding model
+embeddings = get_embedding_model()  # Uses settings.EMBEDDING_MODEL
+```
 
 ### Running Tests
 ```bash
