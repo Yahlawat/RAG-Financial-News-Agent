@@ -48,8 +48,7 @@ Financial-News-Agent/
 │   ├── test_rag/            # RAG component tests
 │   ├── test_scraper/        # Scraper tests
 │   ├── test_api/            # API tests
-│   ├── test_ui/             # UI tests
-│   └── test_integration/    # Integration tests
+│   └── test_ui/             # UI tests
 ├── docs/                     # Documentation
 │   ├── Images/              # Screenshots and images
 │   ├── RUNBOOK.md          # Operational guide

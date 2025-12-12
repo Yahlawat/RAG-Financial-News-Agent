@@ -52,7 +52,7 @@ STREAMLIT_PORT=8501
 ```
 
 ### Data Configuration
-- **Tickers**: Edit `data/tickers/tickers.csv` to change scraping scope
+- **Tickers**: Managed via user portfolios in Streamlit UI (stored in `data/user_profiles/`)
 - **Paths**: All data paths managed automatically via `src/finnews/common/config.py`
 
 ## Commands

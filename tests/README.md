@@ -149,7 +149,7 @@ pytest tests/test_ui/test_user_profile.py -v
 
 ## What's Tested vs Not Tested
 
-### ✅ Tested
+### Tested
 - RAG question answering flow
 - Ticker validation and portfolio management
 - Automated scraping (scheduled + on-demand)
@@ -159,7 +159,7 @@ pytest tests/test_ui/test_user_profile.py -v
 - API endpoint error handling
 - Configuration loading
 
-### ❌ Not Tested (Acceptable)
+### Not Tested (Acceptable)
 - UI rendering (Streamlit framework handles this)
 - Logging functionality (non-critical)
 - Trivial helper functions
@@ -308,6 +308,3 @@ jobs:
 
 ---
 
-## Questions?
-
-See [TESTING_SUMMARY.md](../TESTING_SUMMARY.md) for detailed rationale and coverage analysis.
