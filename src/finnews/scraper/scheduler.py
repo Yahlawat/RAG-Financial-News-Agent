@@ -1,18 +1,14 @@
-"""
-Automated scraping scheduler for financial news.
-
-This module provides scheduled and on-demand scraping functionality:
-- Daily scheduled scraping of all unique tickers across all user portfolios
-- On-demand scraping for newly added tickers
-"""
+"""Automated scraping scheduler."""
 
 import logging
+from typing import Optional
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from finnews.common.config import settings
 from finnews.common.logging import setup_logging
+from finnews.scraper.metadata import is_scrape_running
 from finnews.scraper.runner import run_scraper
 
 setup_logging(component="scheduler", level=logging.INFO, console=True)
@@ -23,55 +19,32 @@ _scheduler: BackgroundScheduler | None = None
 
 
 def get_all_unique_tickers() -> list[str]:
-    """
-    Get all unique tickers from all user portfolios.
-
-    Returns:
-        List of unique ticker symbols (uppercase, sorted)
-    """
-    from finnews.ui.user_profile import USER_PROFILES_DIR
-
-    tickers = set()
+    """Get all tickers from the tickers.txt file."""
+    from finnews.common.ticker_manager import load_tickers
 
     try:
-        if not USER_PROFILES_DIR.exists():
-            logger.warning("User profiles directory does not exist: %s", USER_PROFILES_DIR)
-            return []
-
-        # Load all user profile files
-        for profile_file in USER_PROFILES_DIR.glob("*_profile.json"):
-            try:
-                import json
-
-                with open(profile_file, "r", encoding="utf-8") as f:
-                    profile_data = json.load(f)
-                    portfolio_tickers = profile_data.get("portfolio_tickers", [])
-                    tickers.update(t.strip().upper() for t in portfolio_tickers if t.strip())
-
-            except Exception as e:
-                logger.error("Failed to load profile %s: %s", profile_file, e)
-                continue
-
-        ticker_list = sorted(list(tickers))
-        logger.info("Aggregated %d unique tickers from all user portfolios", len(ticker_list))
-        return ticker_list
-
+        tickers = load_tickers()
+        logger.info("Loaded %d tickers from tickers.txt", len(tickers))
+        return tickers
     except Exception as e:
-        logger.exception("Failed to aggregate tickers: %s", e)
+        logger.exception("Failed to load tickers: %s", e)
         return []
 
 
 def run_scheduled_scrape() -> None:
-    """
-    Main scheduled scraping job - runs daily to scrape all unique tickers.
-    """
+    """Main scheduled scraping job."""
     logger.info("Starting scheduled scraping job")
+
+    # Prevent concurrent scrapes
+    if is_scrape_running():
+        logger.warning("Scrape already in progress. Skipping scheduled scrape.")
+        return
 
     try:
         tickers = get_all_unique_tickers()
 
         if not tickers:
-            logger.warning("No tickers found across all user portfolios. Skipping scrape.")
+            logger.warning("No tickers found in data/tickers.txt. Skipping scrape.")
             return
 
         logger.info("Scheduled scrape starting for %d tickers: %s", len(tickers), tickers)
@@ -86,14 +59,14 @@ def run_scheduled_scrape() -> None:
 
 
 def scrape_new_tickers(new_tickers: list[str]) -> None:
-    """
-    On-demand scraping for newly added tickers.
-
-    Args:
-        new_tickers: List of ticker symbols to scrape immediately
-    """
+    """On-demand scraping for newly added tickers."""
     if not new_tickers:
         logger.warning("No tickers provided for on-demand scraping")
+        return
+
+    # Prevent concurrent scrapes
+    if is_scrape_running():
+        logger.warning("Scrape already in progress. Skipping on-demand scrape.")
         return
 
     logger.info("Starting on-demand scrape for new tickers: %s", new_tickers)
@@ -108,12 +81,7 @@ def scrape_new_tickers(new_tickers: list[str]) -> None:
 
 
 def start_scheduler() -> BackgroundScheduler:
-    """
-    Initialize and start the background scheduler.
-
-    Returns:
-        The running scheduler instance
-    """
+    """Initialize and start the background scheduler."""
     global _scheduler
 
     if _scheduler is not None:
@@ -122,10 +90,7 @@ def start_scheduler() -> BackgroundScheduler:
 
     logger.info("Initializing scraping scheduler")
 
-    _scheduler = BackgroundScheduler(
-        timezone="UTC",  # Use UTC for consistency
-        daemon=True,  # Daemon thread - won't block shutdown
-    )
+    _scheduler = BackgroundScheduler(timezone="UTC", daemon=True)
 
     # Add daily scraping job
     if settings.SCRAPE_SCHEDULE_ENABLED:
@@ -158,9 +123,7 @@ def start_scheduler() -> BackgroundScheduler:
 
 
 def stop_scheduler() -> None:
-    """
-    Stop the background scheduler gracefully.
-    """
+    """Stop the background scheduler."""
     global _scheduler
 
     if _scheduler is None:
@@ -174,10 +137,5 @@ def stop_scheduler() -> None:
 
 
 def get_scheduler() -> Optional[BackgroundScheduler]:
-    """
-    Get the current scheduler instance.
-
-    Returns:
-        Scheduler instance if running, None otherwise
-    """
+    """Get the current scheduler instance."""
     return _scheduler

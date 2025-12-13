@@ -7,10 +7,11 @@ A production-ready Python-based Retrieval-Augmented Generation (RAG) system desi
 ## Features
 
 - **Intelligent Web Scraping**: Automated financial news collection from FinViz with 40,000+ articles stored
+- **Simple Ticker Management**: File-based ticker configuration (data/tickers.txt)
 - **Advanced Text Processing**: Smart chunking and cleaning of articles for optimal embeddings
 - **Semantic Search**: Fast, relevant document retrieval using ChromaDB vector database
 - **Context-Aware Responses**: RAG-powered Q&A with conversation memory and ticker filtering
-- **Webapp Interface**: Streamlit web app, and FastAPI REST endpoints
+- **Clean Interface**: Streamlined Streamlit chat interface and FastAPI REST endpoints
 - **Session Management**: Persistent conversation history across sessions
 - **Modular Architecture**: Clean separation of concerns with configurable components
 - **Easy Installation**: Simple pip install with optional dependency groups
@@ -43,7 +44,7 @@ pip install -e .[api,ui]  # Just the interfaces
 
 ```bash
 # Copy environment template
-cp env.example .env
+cp .env.example .env
 
 # Edit .env and add your OpenAI API key
 OPENAI_API_KEY=your_openai_api_key_here
@@ -51,17 +52,28 @@ OPENAI_API_KEY=your_openai_api_key_here
 
 ### 3. Ticker Management
 
-Add tickers to your portfolio through the web interface. The system will automatically:
-- Scrape news for new tickers immediately when added
-- Run daily scheduled scrapes for all portfolio tickers (2 AM UTC by default)
-- Process and embed articles automatically after scraping
+Create and populate your tickers file:
 
-**Manual Processing** (optional - only needed if automatic processing is disabled):
 ```bash
-# Process and chunk articles
-finnews-chunk
+# Create the tickers file
+echo -e "AAPL\nMSFT\nGOOGL\nTSLA" > data/tickers.txt
+```
 
-# Generate embeddings and build vector database
+The system will automatically scrape news for all tickers in the file daily (2 AM UTC by default).
+
+**Manual Operations**:
+```bash
+# Scrape only
+finnews-scrape
+
+# Or scrape specific tickers
+finnews-scrape --tickers AAPL,MSFT,GOOGL
+
+# Run full pipeline (cleanup → scrape → chunk → embed)
+finnews-pipeline
+
+# Or manual step-by-step processing
+finnews-chunk
 finnews-embed
 ```
 
@@ -81,22 +93,17 @@ finnews-ui
 After installing in editable mode, you can use these convenient commands:
 
 ```bash
-finnews-scrape      # Manual scrape all portfolio tickers (dev/testing only)
-finnews-chunk       # Build chunks from raw articles (manual processing)
-finnews-embed       # Build/update Chroma index (manual processing)
-finnews-cleanup     # Clean up old articles (selective deletion)
-finnews-api         # Start FastAPI server (includes automated scraping scheduler)
-finnews-ui          # Start Streamlit web interface
+finnews-scrape              # Scrape from data/tickers.txt (scraping only)
+finnews-scrape --tickers... # Scrape specific tickers (scraping only)
+finnews-pipeline            # Full pipeline: cleanup → scrape → chunk → embed
+finnews-chunk               # Build chunks from raw articles
+finnews-embed               # Build/update Chroma index
+finnews-cleanup             # Clean up old articles (selective deletion)
+finnews-api                 # Start FastAPI server (includes automated scraping scheduler)
+finnews-ui                  # Start Streamlit web interface
 ```
 
-**Note on Scraping**:
-- **Production**: Scraping is fully automated when the API server runs (daily at 2 AM UTC + when tickers are added)
-- **Development/Testing**: Use `finnews-scrape` to manually trigger scraping of all portfolio tickers
-  - Requires at least one user profile with tickers (create via web UI)
-  - Useful for debugging and testing without waiting for scheduled scrapes
-
-### Scrapy config location change
-- `scrapy.cfg` resides at the repository root. Run Scrapy commands from the repo root (e.g., `scrapy crawl finviz_news`) or set `SCRAPY_SETTINGS_MODULE=finnews.scraper.settings` if running elsewhere.
+**Recommended**: Use `finnews-pipeline` for complete data processing (cleanup → scrape → chunk → embed)
 
 ## Project Architecture
 
@@ -104,17 +111,17 @@ finnews-ui          # Start Streamlit web interface
 Financial-News-Agent/
 ├── src/finnews/           # Main package
 │   ├── api/               # FastAPI REST endpoints
-│   ├── ui/                # Streamlit web interface  
+│   ├── ui/                # Streamlit web interface
 │   ├── rag/               # RAG pipeline components
 │   ├── scraper/           # Scrapy news scraper
 │   ├── scripts/           # CLI utilities
-│   └── common/            # Shared configuration
+│   └── common/            # Shared configuration & utilities
 ├── data/                  # Data storage
+│   ├── tickers.txt        # Ticker symbols (one per line)
 │   ├── raw_news/          # Scraped articles
 │   ├── processed_chunks/  # Text chunks
 │   ├── chroma_store/      # Vector database
-│   ├── chat_memory/       # Conversation history
-│   └── user_profiles/     # User portfolio tickers
+│   └── chat_memory/       # Conversation history
 ├── tests/                 # Test suite
 └── docs/                  # Documentation
 ```
@@ -126,8 +133,8 @@ Financial-News-Agent/
 ### Data Pipeline
 - **Automated Scraper**: Scheduled news collection from FinViz with duplicate detection
   - Daily scraping at 2 AM UTC (configurable)
-  - Immediate scraping when users add new tickers to their portfolio
-  - Scrapes all unique tickers across all user portfolios
+  - Scrapes all tickers from data/tickers.txt
+  - Manual scraping available via CLI
 - **Chunker**: Intelligent text segmentation optimized for semantic search
 - **Embedder**: HuggingFace-based vector embeddings using BAAI/bge-base-en-v1.5
 
@@ -141,13 +148,22 @@ Financial-News-Agent/
 - **FastAPI**: RESTful API for integration with external applications
 
 ### Ticker Management
-The system uses **user-defined portfolios** for ticker management:
 
-- Add tickers through the Streamlit web interface
-- Each user maintains their own portfolio of tickers
-- System automatically aggregates all unique tickers across users for scraping
+The system uses a simple **file-based approach** for ticker management:
+
+- Edit `data/tickers.txt` to add/remove tickers (one per line)
+- Comments supported (lines starting with #)
+- System automatically reads from this file for all scraping operations
 - Ticker validation ensures correct format (1-5 uppercase letters)
-- News is scraped immediately when new tickers are added
+
+**Example tickers.txt:**
+```
+# My portfolio
+AAPL
+MSFT
+GOOGL
+TSLA
+```
 
 **Scheduler Configuration** (optional):
 ```bash
@@ -155,7 +171,6 @@ The system uses **user-defined portfolios** for ticker management:
 SCRAPE_SCHEDULE_ENABLED=True  # Enable/disable scheduled scraping
 SCRAPE_SCHEDULE_HOUR=2  # Hour to run daily scrape (UTC, 0-23)
 SCRAPE_SCHEDULE_MINUTE=0  # Minute to run daily scrape (0-59)
-SCRAPE_ON_NEW_TICKER=True  # Scrape immediately when tickers added
 ```
 
 ## Configuration

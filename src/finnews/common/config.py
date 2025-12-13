@@ -16,36 +16,35 @@ class Settings(BaseSettings):
     API_PORT: int = 8000
     STREAMLIT_PORT: int = 8501
 
-    # Pipeline / Scraping Settings
-    SCRAPE_TIMEOUT_PER_TICKER: int = 180  # seconds per ticker (3 minutes)
-    SCRAPE_TIMEOUT_BUFFER: int = 300  # additional buffer in seconds (5 minutes)
-    SCRAPE_MIN_TIMEOUT: int = 1800  # minimum timeout in seconds (30 minutes)
-    AUTO_PROCESS_PIPELINE: bool = True  # automatically run chunking + embedding after scraping
+    # Scraping Settings
+    SCRAPE_TIMEOUT: int = 1800  # seconds
 
     # Automated Scraping Scheduler
-    SCRAPE_SCHEDULE_ENABLED: bool = True  # enable automated scheduled scraping
-    SCRAPE_SCHEDULE_HOUR: int = 2  # hour (0-23) to run daily scrape (UTC)
-    SCRAPE_SCHEDULE_MINUTE: int = 0  # minute (0-59) to run daily scrape
-    SCRAPE_ON_NEW_TICKER: bool = True  # trigger scraping when new tickers are added
+    SCRAPE_SCHEDULE_ENABLED: bool = False
+    SCRAPE_SCHEDULE_HOUR: int = 2  # UTC, 0-23
+    SCRAPE_SCHEDULE_MINUTE: int = 0  # 0-59
 
     # Data paths (directories)
     CHROMA_DIR: Path = ROOT / "data" / "chroma_store"
     CHAT_MEMORY_DIR: Path = ROOT / "data" / "chat_memory"
     PROCESSED_CHUNKS_DIR: Path = ROOT / "data" / "processed_chunks"
     TICKERS_DIR: Path = ROOT / "data" / "tickers"
-    USER_PROFILES_DIR: Path = ROOT / "data" / "user_profiles"
+    TICKERS_FILE: Path = ROOT / "data" / "tickers" / "tickers.txt"
 
     # Logging settings
     LOG_DIR: Path = ROOT / "logs"
-    LOG_LEVEL: str = "INFO"  # Can be overridden via environment
-    LOG_ROTATION_DAYS: int = 30  # Keep logs for 30 days
-    LOG_ENABLE_UNIFIED: bool = True  # Enable combined.log
+    LOG_LEVEL: str = "INFO"
+    LOG_ROTATION_DAYS: int = 30
+    LOG_ENABLE_UNIFIED: bool = True
 
     # Files
     RAW_NEWS_PATH: Path = ROOT / "data" / "raw_news" / "articles.jsonl"
     PROCESSED_CHUNKS_PATH: Path = ROOT / "data" / "processed_chunks" / "chunked_articles.jsonl"
     CHAT_SESSIONS_FILE: Path = ROOT / "data" / "chat_sessions" / "chat_sessions.json"
     SCRAPE_METADATA_FILE: Path = ROOT / "data" / "scrape_metadata.json"
+
+    # Single-user mode
+    DEFAULT_USER_ID: str = "default"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

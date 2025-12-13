@@ -1,7 +1,5 @@
 """Critical tests for automated scraping scheduler - handles background scraping jobs."""
 
-import tempfile
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -16,102 +14,35 @@ from finnews.scraper.scheduler import (
 
 
 class TestGetAllUniqueTickers:
-    """Test aggregating tickers from all user profiles."""
+    """Test loading tickers from tickers.txt file."""
 
-    @patch("finnews.scraper.scheduler.USER_PROFILES_DIR")
-    def test_get_all_unique_tickers_multiple_users(self, mock_dir):
-        """Test aggregating tickers from multiple user profiles."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            mock_dir.exists.return_value = True
+    @patch("finnews.common.ticker_manager.load_tickers")
+    def test_get_all_unique_tickers_success(self, mock_load):
+        """Test successfully loading tickers from file."""
+        mock_load.return_value = ["AAPL", "GOOGL", "MSFT", "TSLA"]
 
-            # Create user profile files
-            profile1 = {"user_id": "user1", "portfolio_tickers": ["AAPL", "MSFT"]}
-            profile2 = {"user_id": "user2", "portfolio_tickers": ["MSFT", "GOOGL"]}
-            profile3 = {"user_id": "user3", "portfolio_tickers": ["TSLA"]}
+        tickers = get_all_unique_tickers()
 
-            import json
+        assert tickers == ["AAPL", "GOOGL", "MSFT", "TSLA"]
+        mock_load.assert_called_once()
 
-            (tmpdir_path / "user1_profile.json").write_text(json.dumps(profile1))
-            (tmpdir_path / "user2_profile.json").write_text(json.dumps(profile2))
-            (tmpdir_path / "user3_profile.json").write_text(json.dumps(profile3))
-
-            mock_dir.glob.return_value = [
-                tmpdir_path / "user1_profile.json",
-                tmpdir_path / "user2_profile.json",
-                tmpdir_path / "user3_profile.json",
-            ]
-
-            # Get tickers
-            tickers = get_all_unique_tickers()
-
-            # Should return sorted unique tickers
-            assert tickers == ["AAPL", "GOOGL", "MSFT", "TSLA"]
-
-    @patch("finnews.scraper.scheduler.USER_PROFILES_DIR")
-    def test_get_all_unique_tickers_empty(self, mock_dir):
-        """Test when no user profiles exist."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            mock_dir.exists.return_value = True
-            mock_dir.glob.return_value = []
-
-            tickers = get_all_unique_tickers()
-
-            assert tickers == []
-
-    @patch("finnews.scraper.scheduler.USER_PROFILES_DIR")
-    def test_get_all_unique_tickers_directory_missing(self, mock_dir):
-        """Test when user profiles directory doesn't exist."""
-        mock_dir.exists.return_value = False
+    @patch("finnews.common.ticker_manager.load_tickers")
+    def test_get_all_unique_tickers_empty(self, mock_load):
+        """Test when tickers file is empty."""
+        mock_load.return_value = []
 
         tickers = get_all_unique_tickers()
 
         assert tickers == []
 
-    @patch("finnews.scraper.scheduler.USER_PROFILES_DIR")
-    def test_get_all_unique_tickers_invalid_json(self, mock_dir):
-        """Test handling of invalid JSON in profile files."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            mock_dir.exists.return_value = True
+    @patch("finnews.common.ticker_manager.load_tickers")
+    def test_get_all_unique_tickers_error(self, mock_load):
+        """Test handling of errors when loading tickers."""
+        mock_load.side_effect = Exception("File read error")
 
-            # Create invalid and valid profiles
-            (tmpdir_path / "invalid_profile.json").write_text("invalid json")
+        tickers = get_all_unique_tickers()
 
-            import json
-
-            valid_profile = {"user_id": "user2", "portfolio_tickers": ["AAPL"]}
-            (tmpdir_path / "user2_profile.json").write_text(json.dumps(valid_profile))
-
-            mock_dir.glob.return_value = [
-                tmpdir_path / "invalid_profile.json",
-                tmpdir_path / "user2_profile.json",
-            ]
-
-            # Should skip invalid file and process valid one
-            tickers = get_all_unique_tickers()
-
-            assert tickers == ["AAPL"]
-
-    @patch("finnews.scraper.scheduler.USER_PROFILES_DIR")
-    def test_get_all_unique_tickers_case_normalization(self, mock_dir):
-        """Test that tickers are normalized to uppercase."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tmpdir_path = Path(tmpdir)
-            mock_dir.exists.return_value = True
-
-            import json
-
-            profile = {"user_id": "user1", "portfolio_tickers": ["aapl", "MsFt", "GOOGL"]}
-            (tmpdir_path / "user1_profile.json").write_text(json.dumps(profile))
-
-            mock_dir.glob.return_value = [tmpdir_path / "user1_profile.json"]
-
-            tickers = get_all_unique_tickers()
-
-            # All should be uppercase and sorted
-            assert tickers == ["AAPL", "GOOGL", "MSFT"]
+        assert tickers == []
 
 
 class TestRunScheduledScrape:
@@ -131,7 +62,7 @@ class TestRunScheduledScrape:
         mock_get_tickers.assert_called_once()
 
         # Should run scraper with all tickers
-        mock_run_scraper.assert_called_once_with(["AAPL", "MSFT", "GOOGL"], wait=True)
+        mock_run_scraper.assert_called_once_with(["AAPL", "MSFT", "GOOGL"])
 
     @patch("finnews.scraper.scheduler.run_scraper")
     @patch("finnews.scraper.scheduler.get_all_unique_tickers")
@@ -172,8 +103,8 @@ class TestScrapeNewTickers:
 
         scrape_new_tickers(new_tickers)
 
-        # Should run scraper in non-blocking mode
-        mock_run_scraper.assert_called_once_with(["TSLA", "NVDA"], wait=False)
+        # Should run scraper
+        mock_run_scraper.assert_called_once_with(["TSLA", "NVDA"])
 
     @patch("finnews.scraper.scheduler.run_scraper")
     def test_scrape_new_tickers_empty_list(self, mock_run_scraper):
@@ -201,7 +132,7 @@ class TestScrapeNewTickers:
         scrape_new_tickers(["AAPL"])
 
         # Should run scraper with single ticker
-        mock_run_scraper.assert_called_once_with(["AAPL"], wait=False)
+        mock_run_scraper.assert_called_once_with(["AAPL"])
 
 
 class TestSchedulerLifecycle:
@@ -345,7 +276,7 @@ class TestSchedulerIntegration:
 
         # Verify job executed
         mock_get_tickers.assert_called_once()
-        mock_run_scraper.assert_called_once_with(["AAPL", "MSFT"], wait=True)
+        mock_run_scraper.assert_called_once_with(["AAPL", "MSFT"])
 
         # Clean up
         stop_scheduler()

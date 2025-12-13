@@ -1,160 +1,77 @@
+"""Scraper execution runner (direct Scrapy execution, no subprocess)."""
+
 import logging
-import subprocess
-import sys
 
-from scrapy import cmdline
+from scrapy.crawler import CrawlerProcess
+from scrapy.utils.project import get_project_settings
 
-from finnews.common.config import settings
 from finnews.common.logging import setup_logging
 from finnews.scraper.metadata import (
-    complete_chunking,
     complete_pipeline,
     complete_scrape,
     set_pipeline_error,
-    start_chunking,
-    start_embedding,
     start_scrape,
 )
 
-# Setup logging for scraper component
 setup_logging(component="scraper", level=logging.INFO, console=True, unified=True)
 logger = logging.getLogger(__name__)
 
 
-def _run_post_processing_pipeline() -> None:
-    """Run the chunking and embedding pipeline after scraping.
-
-    This function is called automatically after successful scraping if
-    AUTO_PROCESS_PIPELINE is enabled in settings.
-    """
-    try:
-        # Step 1: Chunking
-        logger.info("Step 1/2: Starting chunking process...")
-        start_chunking(total_articles=0)  # Count will be updated by chunker
-
-        from finnews.rag.chunker import main as chunker_main
-
-        chunker_main()
-
-        complete_chunking()
-        logger.info("Chunking completed successfully")
-
-        # Step 2: Embedding
-        logger.info("Step 2/2: Starting embedding generation...")
-        start_embedding()
-
-        from finnews.rag.embedder import main as embedder_main
-
-        embedder_main()
-
-        logger.info("Embedding completed successfully")
-
-        # Mark entire pipeline as complete
-        complete_pipeline(status="completed")
-        logger.info("Full pipeline completed successfully! Articles are now queryable.")
-
-    except Exception as e:
-        logger.error(f"Error in post-processing pipeline: {e}", exc_info=True)
-        # Set pipeline error (simplified - no need to determine exact stage)
-        set_pipeline_error("processing", str(e))
-        raise
-
-
-def main() -> None:
-    """Run the spider using command line interface (backwards compatible)."""
-    cmdline.execute(["scrapy", "crawl", "finviz_news"])
-
-
 def run_scraper(tickers: list[str]) -> None:
-    """Run the scraper for specified tickers.
-
-    This is a convenience wrapper around run_spider_with_tickers() with better naming.
-    Scraping always runs synchronously.
+    """Run the scraper for specified tickers (direct execution, no subprocess).
 
     Args:
-        tickers: List of ticker symbols to scrape
-    """
-    run_spider_with_tickers(tickers)
+        tickers: List of stock ticker symbols to scrape
 
-
-def run_spider_with_tickers(tickers: list[str]) -> None:
-    """Run the spider with custom tickers using subprocess.
-
-    This function runs scrapy in a separate process to avoid reactor issues.
-    Designed to be called from a background thread in the API.
-
-    Args:
-        tickers: List of ticker symbols to scrape
+    Note:
+        This function blocks until scraping completes. Scrapy runs directly
+        in the same process (no subprocess isolation).
     """
     if not tickers:
         logger.warning("No tickers provided, aborting scrape")
         return
 
     try:
-        # Mark scraping as started
         start_scrape(tickers)
         logger.info(f"Starting scrape for {len(tickers)} tickers: {tickers}")
 
-        # Calculate dynamic timeout based on number of tickers
-        # Formula: (tickers × timeout_per_ticker) + buffer, with a minimum
-        calculated_timeout = (
-            len(tickers) * settings.SCRAPE_TIMEOUT_PER_TICKER
-        ) + settings.SCRAPE_TIMEOUT_BUFFER
-        timeout_seconds = max(calculated_timeout, settings.SCRAPE_MIN_TIMEOUT)
+        from finnews.scraper.spiders.finviz_spider import FinVizSpider
 
-        logger.info(
-            f"Scraping timeout set to {timeout_seconds} seconds "
-            f"({timeout_seconds // 60} minutes) for {len(tickers)} tickers"
-        )
+        process = CrawlerProcess(get_project_settings())
+        process.crawl(FinVizSpider, tickers=tickers)
 
-        # Create subprocess command to run scrapy
-        # We use Python's -c flag to run a script directly
-        tickers_str = ",".join(tickers)
-        script = f"""
-import sys
-from scrapy.crawler import CrawlerProcess
-from scrapy.utils.project import get_project_settings
-from finnews.scraper.spiders.finviz_spider import FinVizSpider
+        logger.info("Starting Scrapy crawler...")
+        process.start()  # Blocks until complete
 
-tickers = '{tickers_str}'.split(',')
-settings = get_project_settings()
-process = CrawlerProcess(settings)
-process.crawl(FinVizSpider, tickers=tickers)
-process.start()
-"""
+        from finnews.scraper import pipelines
 
-        # Run the subprocess with calculated timeout
-        result = subprocess.run(
-            [sys.executable, "-c", script], capture_output=True, text=True, timeout=timeout_seconds
-        )
+        articles_found = pipelines._articles_scraped_count
+        logger.info(f"Scraping completed successfully! Found {articles_found} articles")
+        complete_scrape(status="completed", articles_found=articles_found)
 
-        if result.returncode == 0:
-            logger.info("Scraping completed successfully")
-            complete_scrape(status="completed", articles_found=0)
+        complete_pipeline(status="completed")
+        logger.info("Scraping complete.")
 
-            # Run automatic pipeline if enabled
-            if settings.AUTO_PROCESS_PIPELINE:
-                logger.info("Starting automatic post-processing pipeline")
-                _run_post_processing_pipeline()
-            else:
-                logger.info(
-                    "Auto-processing disabled. Run 'finnews-chunk' and 'finnews-embed' manually."
-                )
-                # Mark pipeline as completed (without reset) so UI can show success message
-                complete_pipeline(status="completed")
-        else:
-            logger.error(f"Scraping failed with return code {result.returncode}")
-            logger.error(f"stderr: {result.stderr}")
-            set_pipeline_error("scraping", f"Return code: {result.returncode}")
-            complete_scrape(status="error", articles_found=0)
-
-    except subprocess.TimeoutExpired:
-        logger.error(
-            f"Scraping timed out after {timeout_seconds} seconds ({timeout_seconds // 60} minutes). "
-            f"Consider increasing SCRAPE_TIMEOUT_PER_TICKER or SCRAPE_TIMEOUT_BUFFER in config."
-        )
-        complete_scrape(status="error", articles_found=0)
     except Exception as e:
         logger.error(f"Error during scraping: {e}", exc_info=True)
         complete_scrape(status="error", articles_found=0)
+        set_pipeline_error("scraping", str(e))
         raise
+
+
+def run_spider_with_tickers(tickers: list[str]) -> None:
+    """Deprecated: Use run_scraper() instead.
+
+    Args:
+        tickers: List of stock ticker symbols to scrape
+    """
+    logger.warning("run_spider_with_tickers() is deprecated, use run_scraper()")
+    run_scraper(tickers)
+
+
+def main() -> None:
+    """Run the spider using command line interface (deprecated)."""
+    logger.warning("Direct execution of runner.py is deprecated, use 'finnews-scrape' instead")
+    from scrapy import cmdline
+
+    cmdline.execute(["scrapy", "crawl", "finviz_news"])

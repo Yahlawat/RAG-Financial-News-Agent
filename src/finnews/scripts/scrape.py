@@ -1,66 +1,65 @@
 """
-Manual scraping script for development and testing.
+Manual scraping script.
 
-This script provides a CLI interface for manually triggering news scraping.
-It aggregates all unique tickers from user portfolios and runs the scraper.
-
-Note: For production use, scraping is automated via the scheduler.
-This command is intended for development, testing, and debugging purposes.
+Supports reading tickers from data/tickers.txt or via CLI arguments.
 """
 
+import argparse
 import logging
 import sys
 
-from finnews.common.config import settings
 from finnews.common.logging import setup_logging
 from finnews.common.paths import ensure_dirs
+from finnews.common.ticker_manager import load_tickers
 from finnews.scraper.runner import run_scraper
-from finnews.ui.user_profile import get_all_unique_tickers
 
-# Setup logging
 setup_logging(component="scraper", level=logging.INFO, console=True)
 logger = logging.getLogger(__name__)
 
 
 def main() -> int:
-    """
-    CLI entry point for manual scraping (dev/testing only).
+    """CLI entry point for manual scraping."""
+    parser = argparse.ArgumentParser(
+        description="Manual scraping for financial news articles"
+    )
+    parser.add_argument(
+        "--tickers",
+        type=str,
+        help="Comma-separated list of tickers to scrape (overrides tickers.txt)",
+    )
+    args = parser.parse_args()
 
-    Loads all unique tickers from user portfolios and runs the scraper.
-    For production use, scraping is automated via the scheduler.
-
-    Returns:
-        Exit code (0 for success, 1 for error)
-    """
     ensure_dirs()
 
     logger.info("=" * 60)
-    logger.info("Manual Scraping (Development/Testing Mode)")
+    logger.info("Manual Scraping")
     logger.info("=" * 60)
 
-    # Load tickers from user portfolios
-    logger.info("Loading tickers from user portfolios...")
-    tickers = get_all_unique_tickers()
+    if args.tickers:
+        tickers = [t.strip().upper() for t in args.tickers.split(",") if t.strip()]
+        logger.info(f"Using tickers from CLI argument: {', '.join(tickers)}")
+    else:
+        logger.info("Loading tickers from data/tickers.txt...")
+        tickers = load_tickers()
 
-    if not tickers:
-        logger.warning("No tickers found in any user portfolio.")
-        return 1
+        if not tickers:
+            logger.warning("No tickers found in data/tickers.txt")
+            logger.info("Add tickers to data/tickers.txt (one per line) or use --tickers flag")
+            return 1
 
-    logger.info(f"Found {len(tickers)} unique ticker(s): {', '.join(tickers)}")
+        logger.info(f"Found {len(tickers)} ticker(s): {', '.join(tickers)}")
+
     logger.info("")
 
-    # Run the scraper
     try:
         logger.info("Starting scraper...")
         run_scraper(tickers)
         logger.info("Scraping completed successfully!")
-     
-        if settings.AUTO_PROCESS_PIPELINE:
-            logger.info("Auto-processing is enabled. Articles will be chunked and embedded.")
-        else:
-            logger.info("Next steps:")
-            logger.info("  1. Process articles: finnews-chunk")
-            logger.info("  2. Generate embeddings: finnews-embed")
+        logger.info("")
+        logger.info("Next steps:")
+        logger.info("  - Process articles: finnews-chunk")
+        logger.info("  - Generate embeddings: finnews-embed")
+        logger.info("  - Or run full pipeline: finnews-pipeline")
 
         return 0
 

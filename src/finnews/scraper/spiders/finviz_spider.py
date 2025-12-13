@@ -6,7 +6,6 @@ import scrapy
 from finnews.common.config import settings
 from finnews.common.io_utils import ensure_file_dir
 from finnews.scraper.items import NewsArticleItem
-from finnews.scraper.utils import load_existing_urls
 
 
 class FinVizSpider(scrapy.Spider):
@@ -18,10 +17,6 @@ class FinVizSpider(scrapy.Spider):
 
         self.article_store = str(settings.RAW_NEWS_PATH)
         ensure_file_dir(self.article_store)
-
-        # Duplicate Detection Layer 1: Load existing URLs to avoid unnecessary HTTP requests
-        # This improves performance by skipping articles we've already scraped
-        self.existing_urls = load_existing_urls(self.article_store)
 
         # Tickers parameter is now required
         if not tickers:
@@ -56,9 +51,9 @@ class FinVizSpider(scrapy.Spider):
 
             if url and url.startswith("/"):
                 url = "https://finviz.com" + url
-            # Duplicate Detection Layer 2: Skip if already in our existing URLs set
-            # Saves HTTP bandwidth and scraping time for articles we already have
-            if not url or url in self.existing_urls:
+
+            # Duplicate detection handled by pipeline
+            if not url:
                 continue
 
             source = article.css("span::text").get()
