@@ -38,7 +38,6 @@ dist/
 # Environment variables
 # ----------------------------------------
 .env
-.env.*
 
 # ----------------------------------------
 # Data artifacts (generated or large)
