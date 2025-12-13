@@ -90,20 +90,18 @@ finnews-ui
 ```
 
 ### Console Scripts
-After installing in editable mode, you can use these convenient commands:
 
 ```bash
-finnews-scrape              # Scrape from data/tickers.txt (scraping only)
-finnews-scrape --tickers... # Scrape specific tickers (scraping only)
-finnews-pipeline            # Full pipeline: cleanup → scrape → chunk → embed
-finnews-chunk               # Build chunks from raw articles
-finnews-embed               # Build/update Chroma index
-finnews-cleanup             # Clean up old articles (selective deletion)
-finnews-api                 # Start FastAPI server (includes automated scraping scheduler)
+finnews-pipeline            # Full pipeline: cleanup → scrape → chunk → embed (recommended)
+finnews-scrape              # Scrape news articles
+finnews-chunk               # Process articles into chunks
+finnews-embed               # Generate embeddings
+finnews-cleanup             # Clean up old articles
+finnews-api                 # Start FastAPI server
 finnews-ui                  # Start Streamlit web interface
 ```
 
-**Recommended**: Use `finnews-pipeline` for complete data processing (cleanup → scrape → chunk → embed)
+📋 **For detailed command options and usage**, see [docs/RUNBOOK.md](docs/RUNBOOK.md)
 
 ## Project Architecture
 
@@ -149,14 +147,8 @@ Financial-News-Agent/
 
 ### Ticker Management
 
-The system uses a simple **file-based approach** for ticker management:
+Manage tickers via `data/tickers.txt` (one per line):
 
-- Edit `data/tickers.txt` to add/remove tickers (one per line)
-- Comments supported (lines starting with #)
-- System automatically reads from this file for all scraping operations
-- Ticker validation ensures correct format (1-5 uppercase letters)
-
-**Example tickers.txt:**
 ```
 # My portfolio
 AAPL
@@ -165,27 +157,22 @@ GOOGL
 TSLA
 ```
 
-**Scheduler Configuration** (optional):
-```bash
-# In .env file
-SCRAPE_SCHEDULE_ENABLED=True  # Enable/disable scheduled scraping
-SCRAPE_SCHEDULE_HOUR=2  # Hour to run daily scrape (UTC, 0-23)
-SCRAPE_SCHEDULE_MINUTE=0  # Minute to run daily scrape (0-59)
-```
+The system automatically reads this file for scraping operations.
+
+📋 **For scheduler configuration and advanced options**, see [docs/RUNBOOK.md](docs/RUNBOOK.md)
 
 ## Configuration
 
-All settings are centralized in `src/finnews/common/config.py`:
+Key settings in `.env`:
 
-| Setting | Default | Environment Variable |
-|---------|---------|---------------------|
-| **API Key** | None | `OPENAI_API_KEY` |
-| **LLM Model** | `gpt-4o-mini` | `LLM_MODEL` |
-| **Embedding Model** | `BAAI/bge-base-en-v1.5` | `EMBEDDING_MODEL` |
-| **API Port** | 8000 | `API_PORT` |
-| **UI Port** | 8501 | `STREAMLIT_PORT` |
+| Setting | Environment Variable | Required |
+|---------|---------------------|----------|
+| **OpenAI API Key** | `OPENAI_API_KEY` | Yes |
+| **LLM Model** | `LLM_MODEL` | No (default: `gpt-4o-mini`) |
+| **API Port** | `API_PORT` | No (default: 8000) |
+| **UI Port** | `STREAMLIT_PORT` | No (default: 8501) |
 
-📋 **Full configuration guide**: See [docs/RUNBOOK.md](docs/RUNBOOK.md)
+📋 **For full configuration options**, see [docs/RUNBOOK.md](docs/RUNBOOK.md)
 
 ## Advanced Features
 
