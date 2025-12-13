@@ -6,9 +6,8 @@
 
 #### **CRITICAL (Must Pass Before Deploy)**
 1. `test_rag/test_rag_chain.py` - Core Q&A functionality
-2. `test_ui/test_user_profile.py` - Ticker validation & portfolio management
-3. `test_scraper/test_scheduler.py` - Automated scraping
-4. `test_api/test_main.py` - API endpoints
+2. `test_scraper/test_scheduler.py` - Automated scraping
+3. `test_api/test_main.py` - API endpoints
 
 #### **IMPORTANT (High Risk Areas)**
 5. `test_scraper/test_runner.py` - Multi-ticker scraping & timeouts
@@ -32,7 +31,6 @@ pytest tests/
 ### Run Critical Tests Only (Fast - ~30s)
 ```bash
 pytest tests/test_rag/test_rag_chain.py \
-       tests/test_ui/test_user_profile.py \
        tests/test_scraper/test_scheduler.py \
        tests/test_api/test_main.py
 ```
@@ -73,8 +71,8 @@ pytest --cov=finnews --cov-report=term-missing tests/
 # Example: Test only RAG chat functionality
 pytest tests/test_rag/test_rag_chain.py::TestRagChat
 
-# Example: Test only ticker validation
-pytest tests/test_ui/test_user_profile.py::TestValidateTicker
+# Example: Test only scheduler ticker loading
+pytest tests/test_scraper/test_scheduler.py::TestGetAllUniqueTickers
 ```
 
 ---
@@ -85,7 +83,6 @@ pytest tests/test_ui/test_user_profile.py::TestValidateTicker
 ```bash
 # Run all critical tests
 pytest tests/test_rag/test_rag_chain.py \
-       tests/test_ui/test_user_profile.py \
        tests/test_scraper/test_scheduler.py \
        tests/test_api/test_main.py \
        -v
@@ -106,9 +103,9 @@ pytest tests/test_scraper/ -v
 pytest tests/test_api/ -v
 ```
 
-### After Ticker/User Profile Changes
+### After Ticker Management Changes
 ```bash
-pytest tests/test_ui/test_user_profile.py -v
+pytest tests/test_scraper/test_scheduler.py -v
 ```
 
 ---
@@ -121,9 +118,9 @@ pytest tests/test_ui/test_user_profile.py -v
 - **Covers**: Main user-facing feature
 
 ### Ticker Management
-- **File**: `test_ui/test_user_profile.py`
-- **Tests**: Validation, portfolio CRUD, scraping triggers
-- **Covers**: Data quality and automation triggers
+- **File**: `test_scraper/test_scheduler.py`
+- **Tests**: Loading tickers from file, validation
+- **Covers**: File-based ticker management
 
 ### Automated Scraping
 - **Files**: `test_scraper/test_scheduler.py`, `test_scraper/test_runner.py`
@@ -151,7 +148,7 @@ pytest tests/test_ui/test_user_profile.py -v
 
 ### Tested
 - RAG question answering flow
-- Ticker validation and portfolio management
+- Ticker loading from file (data/tickers.txt)
 - Automated scraping (scheduled + on-demand)
 - Multi-ticker scraping with timeouts
 - Text chunking and cleaning
@@ -247,7 +244,7 @@ test_scheduler_start_already_running()
 ```bash
 # Run critical tests before commit
 pytest tests/test_rag/test_rag_chain.py \
-       tests/test_ui/test_user_profile.py \
+       tests/test_scraper/test_scheduler.py \
        tests/test_api/test_main.py
 ```
 
@@ -276,7 +273,7 @@ jobs:
 
 **Fast Tests** (~20s total):
 - test_common/test_config.py
-- test_ui/test_user_profile.py
+- test_scraper/test_scheduler.py
 
 **Medium Tests** (~1min total):
 - test_rag/test_rag_chain.py

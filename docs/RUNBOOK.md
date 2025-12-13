@@ -52,26 +52,51 @@ STREAMLIT_PORT=8501
 ```
 
 ### Data Configuration
-- **Tickers**: Managed via user portfolios in Streamlit UI (stored in `data/user_profiles/`)
+- **Tickers**: Managed via `data/tickers.txt` (one ticker per line)
 - **Paths**: All data paths managed automatically via `src/finnews/common/config.py`
 
 ## Commands
 
 ### Data Pipeline
 
-#### 1. Scrape Financial News
+#### Full Pipeline (Recommended)
+
+Run the complete data processing pipeline:
+
 ```bash
-# Using console script (after editable install)
-finnews-scrape
+# Full pipeline: cleanup → scrape → chunk → embed
+finnews-pipeline
 
-# Or direct Scrapy command
-scrapy crawl finviz_news   # run from repo root with scrapy.cfg at root
-
-# Or Python script
-python src/finnews/scraper/runner.py
+# With specific tickers
+finnews-pipeline --tickers AAPL,MSFT
 ```
 
-#### 2. Process Articles
+**Automated Scraping:**
+Automated scraping via the scheduler (runs daily at 2:00 AM UTC by default) only performs scraping - it does not auto-process.
+Configure via environment variables:
+```bash
+SCRAPE_SCHEDULE_ENABLED=true   # Enable/disable (default: false)
+SCRAPE_SCHEDULE_HOUR=2         # Hour in UTC, 0-23 (default: 2)
+SCRAPE_SCHEDULE_MINUTE=0       # Minute, 0-59 (default: 0)
+```
+
+The scheduler loads tickers from [data/tickers.txt](data/tickers.txt) and prevents concurrent scraping runs.
+
+#### Individual Steps (Manual Processing)
+
+**1. Scrape Financial News**
+
+**Note:** Scraping runs Scrapy directly in the same process. The CLI command will block until scraping completes (typically 30-300 seconds depending on tickers).
+
+```bash
+# Using console script (recommended)
+finnews-scrape
+
+# Or Python module
+python -m finnews.scraper.runner
+```
+
+**2. Process Articles
 ```bash
 # Using console script
 finnews-chunk
@@ -80,7 +105,7 @@ finnews-chunk
 python src/finnews/rag/chunker.py
 ```
 
-#### 3. Generate Embeddings
+**3. Generate Embeddings**
 ```bash
 # Using console script
 finnews-embed
@@ -89,7 +114,7 @@ finnews-embed
 python src/finnews/rag/embedder.py
 ```
 
-#### 4. Clean Up Old Articles (Optional)
+**4. Clean Up Old Articles (Optional)
 ```bash
 # Using console script (keeps last 30 days by default)
 finnews-cleanup
@@ -109,6 +134,19 @@ python src/finnews/scripts/cleanup_old_articles.py --days 30
 - Automatic backups before cleanup
 - Old backup removal (keeps 6 months)
 - Filters raw articles, chunks, and vector DB
+
+#### Pipeline vs Individual Commands
+
+**Use `finnews-pipeline` when:**
+- Running regular data refreshes
+- Setting up new data from scratch
+- You want the complete automated flow: cleanup → scrape → process
+
+**Use individual commands when:**
+- Debugging specific pipeline steps
+- Re-processing existing data without re-scraping
+- Running only scraping without processing
+- Testing individual components
 
 ### Application Services
 
@@ -147,7 +185,7 @@ streamlit run src/finnews/ui/app.py --server.port 8502
 | **Active Sessions** | `data/chat_sessions/chat_sessions.json` | JSON |
 | **Conversation History** | `data/chat_sessions/conversations/` | JSON |
 | **Backups** | `data/backups/` | Various |
-| **Tickers** | `data/tickers/tickers.csv` | CSV |
+| **Tickers** | `data/tickers.txt` | Plain Text |
 
 ## Troubleshooting
 
@@ -202,7 +240,7 @@ rm -rf data/chat_memory/*
 #### Rescrape Subset
 ```bash
 # Edit ticker list
-nano data/tickers/tickers.csv
+nano data/tickers.txt
 
 # Then re-run scraping
 finnews-scrape

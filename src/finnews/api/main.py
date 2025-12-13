@@ -9,9 +9,9 @@ from pydantic import BaseModel
 from finnews.api.scraper_endpoints import router as scraper_router
 from finnews.common.config import settings
 from finnews.common.logging import setup_logging
+from finnews.common.ticker_manager import load_tickers
 from finnews.rag.rag_chain import rag_chat
 from finnews.rag.retriever import load_vectorstore
-from finnews.ui.user_profile import get_portfolio_tickers
 
 # Setup logging for API component
 setup_logging(component="api", level=logging.INFO, console=True, unified=True)
@@ -76,12 +76,12 @@ class ChatRequest(BaseModel):
 def chat_endpoint(req: ChatRequest):
     logger.info("Chat request from user %s in conversation %s", req.user_id, req.conversation_id)
 
-    # Auto-load user's portfolio tickers if not explicitly provided
+    # Auto-load tickers from tickers.txt if not explicitly provided
     target_tickers = req.tickers
     if not target_tickers:
-        target_tickers = get_portfolio_tickers(req.user_id)
+        target_tickers = load_tickers()
         if target_tickers:
-            logger.info(f"Using portfolio tickers for user {req.user_id}: {target_tickers}")
+            logger.info(f"Using tickers from tickers.txt: {target_tickers}")
 
     try:
         response = rag_chat(

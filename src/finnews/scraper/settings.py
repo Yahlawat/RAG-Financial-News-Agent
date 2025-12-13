@@ -29,10 +29,8 @@ ITEM_PIPELINES = {
     "finnews.scraper.pipelines.SaveNewsJSONLPipeline": 300,
 }
 
-# Extensions for progress tracking
-EXTENSIONS = {
-    "finnews.scraper.progress_extension.ProgressTrackerExtension": 100,
-}
+# Extensions (progress tracking moved to pipeline)
+EXTENSIONS = {}
 
 # Compatibility settings
 REQUEST_FINGERPRINTER_IMPLEMENTATION = "2.7"

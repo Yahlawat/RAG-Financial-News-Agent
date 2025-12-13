@@ -57,10 +57,11 @@ dev = [
 [project.scripts]
 finnews-api = "finnews.api.main:run"
 finnews-chunk = "finnews.rag.chunker:main"
+finnews-cleanup = "finnews.scripts.cleanup_old_articles:main"
 finnews-embed = "finnews.rag.embedder:main"
+finnews-pipeline = "finnews.scripts.pipeline:main"
 finnews-scrape = "finnews.scripts.scrape:main"
 finnews-ui = "finnews.ui.app:main"
-finnews-cleanup = "finnews.scripts.cleanup_old_articles:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

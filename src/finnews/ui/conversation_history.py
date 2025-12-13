@@ -17,8 +17,11 @@ def _get_conversation_file(user_id: str) -> Path:
     return CONVERSATIONS_DIR / f"{user_id}_conversations.json"
 
 
-def load_user_conversations(user_id: str) -> list[dict]:
+def load_user_conversations(user_id: str = None) -> list[dict]:
     """Load all conversations for a user.
+
+    Args:
+        user_id: User ID (defaults to DEFAULT_USER_ID)
 
     Returns:
         List of conversation dicts, each containing:
@@ -28,6 +31,9 @@ def load_user_conversations(user_id: str) -> list[dict]:
         - updated_at: str (ISO timestamp)
         - messages: List[Dict] with role, content, sources
     """
+    if user_id is None:
+        user_id = settings.DEFAULT_USER_ID
+
     _ensure_conversations_dir()
     conv_file = _get_conversation_file(user_id)
 
@@ -42,8 +48,16 @@ def load_user_conversations(user_id: str) -> list[dict]:
         return []
 
 
-def save_user_conversations(user_id: str, conversations: list[dict]):
-    """Save all conversations for a user."""
+def save_user_conversations(user_id: str = None, conversations: list[dict] = None):
+    """Save all conversations for a user.
+
+    Args:
+        user_id: User ID (defaults to DEFAULT_USER_ID)
+        conversations: List of conversation dicts to save
+    """
+    if user_id is None:
+        user_id = settings.DEFAULT_USER_ID
+
     _ensure_conversations_dir()
     conv_file = _get_conversation_file(user_id)
 
@@ -56,8 +70,16 @@ def save_user_conversations(user_id: str, conversations: list[dict]):
         logging.warning(f"Failed to save conversations for user {user_id}: {e}")
 
 
-def get_conversation(user_id: str, conversation_id: str) -> dict | None:
-    """Get a specific conversation by ID."""
+def get_conversation(user_id: str = None, conversation_id: str = None) -> dict | None:
+    """Get a specific conversation by ID.
+
+    Args:
+        user_id: User ID (defaults to DEFAULT_USER_ID)
+        conversation_id: Conversation ID
+    """
+    if user_id is None:
+        user_id = settings.DEFAULT_USER_ID
+
     conversations = load_user_conversations(user_id)
     for conv in conversations:
         if conv.get("conversation_id") == conversation_id:
@@ -65,8 +87,16 @@ def get_conversation(user_id: str, conversation_id: str) -> dict | None:
     return None
 
 
-def create_conversation(user_id: str, conversation_id: str) -> dict:
-    """Create a new empty conversation."""
+def create_conversation(user_id: str = None, conversation_id: str = None) -> dict:
+    """Create a new empty conversation.
+
+    Args:
+        user_id: User ID (defaults to DEFAULT_USER_ID)
+        conversation_id: Conversation ID
+    """
+    if user_id is None:
+        user_id = settings.DEFAULT_USER_ID
+
     now = datetime.now(timezone.utc).isoformat()
     new_conv = {
         "conversation_id": conversation_id,
@@ -84,21 +114,24 @@ def create_conversation(user_id: str, conversation_id: str) -> dict:
 
 
 def add_message(
-    user_id: str,
-    conversation_id: str,
-    role: str,
-    content: str,
+    user_id: str = None,
+    conversation_id: str = None,
+    role: str = None,
+    content: str = None,
     sources: list[dict] | None = None,
 ):
     """Add a message to a conversation.
 
     Args:
-        user_id: User identifier
+        user_id: User ID (defaults to DEFAULT_USER_ID)
         conversation_id: Conversation identifier
         role: 'user' or 'assistant'
         content: Message content
         sources: Optional list of source documents (for assistant messages)
     """
+    if user_id is None:
+        user_id = settings.DEFAULT_USER_ID
+
     conversations = load_user_conversations(user_id)
 
     # Find the conversation
@@ -137,15 +170,31 @@ def add_message(
     save_user_conversations(user_id, conversations)
 
 
-def delete_conversation(user_id: str, conversation_id: str):
-    """Delete a conversation."""
+def delete_conversation(user_id: str = None, conversation_id: str = None):
+    """Delete a conversation.
+
+    Args:
+        user_id: User ID (defaults to DEFAULT_USER_ID)
+        conversation_id: Conversation ID to delete
+    """
+    if user_id is None:
+        user_id = settings.DEFAULT_USER_ID
+
     conversations = load_user_conversations(user_id)
     conversations = [c for c in conversations if c.get("conversation_id") != conversation_id]
     save_user_conversations(user_id, conversations)
 
 
-def get_conversation_messages(user_id: str, conversation_id: str) -> list[dict]:
-    """Get all messages from a conversation."""
+def get_conversation_messages(user_id: str = None, conversation_id: str = None) -> list[dict]:
+    """Get all messages from a conversation.
+
+    Args:
+        user_id: User ID (defaults to DEFAULT_USER_ID)
+        conversation_id: Conversation ID
+    """
+    if user_id is None:
+        user_id = settings.DEFAULT_USER_ID
+
     conv = get_conversation(user_id, conversation_id)
     if conv:
         return conv.get("messages", [])

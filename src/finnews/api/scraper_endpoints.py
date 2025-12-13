@@ -1,6 +1,4 @@
 """API endpoints for scraping status monitoring and ticker metadata.
-
-Note: Scraping is now automated via scheduler. Manual scraping endpoints have been removed.
 """
 
 import logging
@@ -70,14 +68,14 @@ def get_scrape_status_endpoint():
 
     # Calculate time elapsed if scraping is running
     time_elapsed = None
-    if status.started_at:
+    if status.get("started_at"):
         try:
-            start_time = datetime.fromisoformat(status.started_at)
+            start_time = datetime.fromisoformat(status["started_at"])
             time_elapsed = (datetime.now() - start_time).total_seconds()
 
             # Auto-reset stuck "running" states (older than 30 minutes)
             # This handles cases where the scraper crashed without updating status
-            if status.status == "running" and time_elapsed > 1800:  # 30 minutes
+            if status.get("status") == "running" and time_elapsed > 1800:  # 30 minutes
                 logger.warning(
                     f"Auto-resetting stuck scraping job (running for {int(time_elapsed)}s). "
                     "This likely indicates the scraper crashed."
@@ -91,15 +89,18 @@ def get_scrape_status_endpoint():
     # Generate stage-specific message
     stage_message = _get_stage_message(status)
 
+    # Extract progress data
+    progress = status.get("progress", {})
+
     return ScrapeStatusResponse(
-        status=status.status,
-        started_at=status.started_at,
-        tickers_in_progress=status.tickers_in_progress,
-        completed=status.completed,
-        total=status.total,
-        articles_found=status.articles_found,
+        status=status.get("status", "idle"),
+        started_at=status.get("started_at"),
+        tickers_in_progress=status.get("tickers_in_progress", []),
+        completed=progress.get("completed", 0),
+        total=progress.get("total", 0),
+        articles_found=status.get("articles_found", 0),
         time_elapsed_seconds=time_elapsed,
-        pipeline_stage=status.pipeline_stage,
+        pipeline_stage=status.get("pipeline_stage", "idle"),
         stage_message=stage_message,
     )
 
@@ -115,24 +116,25 @@ STAGE_MESSAGES = {
 }
 
 
-def _get_stage_message(status) -> str:
+def _get_stage_message(status: dict) -> str:
     """Generate a human-readable message for the current pipeline stage.
 
     Args:
-        status: ScrapeStatus object
+        status: Status dict
 
     Returns:
         Human-readable stage message
     """
-    stage = status.pipeline_stage
+    stage = status.get("pipeline_stage", "idle")
 
-    if stage.startswith("error_"):
+    if stage and stage.startswith("error_"):
         error_stage = stage.replace("error_", "")
         return f"Error in {error_stage} stage"
 
     msg = STAGE_MESSAGES.get(stage, f"Status: {stage}")
-    if stage == "scraping" and status.total > 0:
-        msg = f"Scraping articles... {status.completed}/{status.total} tickers"
+    progress = status.get("progress", {})
+    if stage == "scraping" and progress.get("total", 0) > 0:
+        msg = f"Scraping articles... {progress.get('completed', 0)}/{progress['total']} tickers"
     return msg
 
 
@@ -151,8 +153,8 @@ def get_tickers_metadata_endpoint(request: TickerMetadataRequest):
     items = [
         TickerMetadataItem(
             ticker=ticker,
-            last_scraped=metadata.last_scraped if metadata else None,
-            articles_count=metadata.articles_count if metadata else 0,
+            last_scraped=metadata.get("last_scraped") if metadata else None,
+            articles_count=metadata.get("articles_count", 0) if metadata else 0,
             never_scraped=not bool(metadata),
         )
         for ticker, metadata in metadata_dict.items()
