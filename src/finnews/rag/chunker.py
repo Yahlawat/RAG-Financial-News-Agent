@@ -10,14 +10,13 @@ from finnews.common.config import settings
 from finnews.common.io_utils import ensure_file_dir, read_jsonl
 from finnews.common.logging import get_logger, setup_logging
 
-# Setup logging for RAG component
 setup_logging(component="rag", level=logging.INFO, console=True)
 logger = get_logger(__name__)
 
 
 def clean_chunk(text: str) -> str:
     """
-    Clean and normalize text by removing control characters and fixing common encoding issues.
+    Clean and normalize text by removing control characters and fixing encoding issues.
 
     Args:
         text: Raw text string to clean
@@ -36,10 +35,7 @@ def clean_chunk(text: str) -> str:
 
 def chunk_articles(articles: list[dict], max_characters=800) -> list[Document]:
     """
-    Split news articles into smaller chunks with metadata preservation.
-
-    Uses recursive character splitting to break articles into manageable chunks
-    while preserving metadata (title, URL, tickers, publication date).
+    Split news articles into smaller chunks while preserving metadata.
 
     Args:
         articles: List of article dictionaries with 'body', 'title', 'url', etc.
@@ -79,21 +75,16 @@ def process_jsonl(input_path: str, output_path: str):
     """
     Process a JSONL file of articles into chunked documents.
 
-    Reads articles from input JSONL file, chunks them using chunk_articles(),
-    and writes the resulting chunks to output JSONL file.
-
     Args:
         input_path: Path to input JSONL file containing raw articles
         output_path: Path to output JSONL file for chunked documents
     """
     ensure_file_dir(output_path)
 
-    # Load articles using utility function
     articles = list(read_jsonl(input_path))
 
     chunked_docs = chunk_articles(articles)
 
-    # Write chunks to output file
     with open(output_path, "w", encoding="utf-8") as out_f:
         for doc in chunked_docs:
             out_f.write(

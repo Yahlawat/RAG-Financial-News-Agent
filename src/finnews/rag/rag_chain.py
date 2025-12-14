@@ -15,7 +15,6 @@ from finnews.rag.retriever import (
     retrieve_chat_memory,
 )
 
-# Setup logging for RAG component
 setup_logging(component="rag", level=logging.INFO, console=True)
 logger = logging.getLogger(__name__)
 
@@ -34,12 +33,11 @@ def format_doc_with_metadata(doc, doc_type: str = "news") -> str:
     if doc_type == "chat":
         role = doc.metadata.get("role", "unknown").upper()
         return f"[{role}]: {doc.page_content}"
-    else:  # news
+    else:
         title = doc.metadata.get("title", "Unknown Article")
         date = doc.metadata.get("published_date", "Unknown date")
         tickers = doc.metadata.get("relevant_tickers", "")
 
-        # Parse tickers from comma-separated string
         ticker_list = [t.strip() for t in tickers.split(",") if t.strip()]
         ticker_str = f" ({', '.join(ticker_list)})" if ticker_list else ""
 
@@ -64,7 +62,7 @@ def rag_chat(
 
     past_qas = retrieve_chat_memory(chat_store, conversation_id, query=question, k=chat_k)
 
-    # Format chat history with metadata
+    # Format chat history if available
     if past_qas:
         formatted_chat = "\n\n".join(
             format_doc_with_metadata(doc, doc_type="chat") for doc in past_qas
@@ -73,7 +71,7 @@ def rag_chat(
     else:
         chat_context = ""
 
-    # Retrieve and format news articles with metadata
+    # Retrieve and format relevant news articles
     news_docs = article_chunk_retriever(
         article_store, query=question, target_tickers=target_tickers, top_n=top_k
     )
@@ -82,35 +80,33 @@ def rag_chat(
     )
     news_context = f"=== RELEVANT NEWS ARTICLES ===\n(Recent financial news excerpts)\n\n{formatted_news}"
 
-    # Combine contexts
+    # Combine chat history and news context
     if chat_context:
         combined_context = f"{chat_context}\n\n{news_context}"
     else:
         combined_context = news_context
 
     prompt_template = PromptTemplate.from_template(
-        """You are a financial news assistant specializing in company news and market developments. Your role is to provide factual, well-structured summaries based on the information provided.
+        """You are a financial news assistant. Provide factual, well-structured summaries based on the information provided.
 
-GUIDELINES:
-- Answer using ONLY the information in the context below
-- Structure your response with clear paragraphs or bullet points for readability
-- When discussing specific financial data (earnings, stock prices, percentages), include the exact figures mentioned
-- Note publication dates when timing is relevant to the question (e.g., "most recent", "this week")
-- Distinguish between factual reporting and opinion/analysis from source articles
-- If multiple sources present different perspectives or information, acknowledge both viewpoints
-- If the context lacks sufficient information to fully answer the question, clearly state what information is missing
-- Use conversation history to understand follow-up questions and maintain context
-- Important: This information reflects article publication dates and may not represent current conditions
-- Do NOT provide investment advice or buy/sell recommendations
-- Do NOT include article URLs or source links (these are provided separately)
+        GUIDELINES:
+        - Answer using ONLY the context below
+        - Include exact figures when discussing financial data
+        - Note publication dates when relevant
+        - Distinguish between facts and opinions
+        - Acknowledge multiple viewpoints if present
+        - State clearly if information is missing
+        - Use conversation history for follow-up questions
+        - Do NOT provide investment advice
+        - Do NOT include URLs (provided separately)
 
-Context:
-{combined_context}
+        Context:
+        {combined_context}
 
-Question: {question}
+        Question: {question}
 
-Response:"""
-    )
+        Response:"""
+            )
 
     api_key = settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY")
 

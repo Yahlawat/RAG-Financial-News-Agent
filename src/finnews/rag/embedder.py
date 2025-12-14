@@ -11,13 +11,13 @@ from finnews.common.config import settings
 from finnews.common.io_utils import read_jsonl
 from finnews.common.logging import setup_logging
 
-# Setup logging for RAG component
 setup_logging(component="rag", level=logging.INFO, console=True)
 logger = logging.getLogger(__name__)
 
 
 def get_embedding_model(model_name: str | None = None) -> HuggingFaceEmbeddings:
-    """Get the configured embedding model.
+    """
+    Get the configured embedding model.
 
     Args:
         model_name: Optional model name override. If not provided, uses settings.EMBEDDING_MODEL
@@ -34,12 +34,10 @@ def load_chunks_from_file(file_path: str):
     documents = []
     ids = []
 
-    # Use utility function to read JSONL
     for idx, item in enumerate(read_jsonl(file_path)):
         try:
             chunk = item.get("content", "").strip()
 
-            # Handle missing metadata gracefully
             item_metadata = item.get("metadata", {})
             metadata = {
                 "title": item_metadata.get("title", ""),
@@ -53,8 +51,7 @@ def load_chunks_from_file(file_path: str):
             if not chunk:
                 continue
 
-            # Sanitize title for use in document ID
-            # Remove special characters that can cause SQLite/ChromaDB issues
+            # Sanitize title for use in document ID (remove special characters)
             title = metadata.get("title", "")
             title_clean = re.sub(r'[^a-zA-Z0-9_-]', '_', title)[:80]
             doc_id = f"{title_clean}_{idx}"
@@ -73,23 +70,19 @@ def batch(iterable: list, batch_size: int):
         yield iterable[i : i + batch_size]
 
 
-def delete_old_articles_from_chroma(
-    vectorstore: Chroma,
-    cutoff_date: str,
-) -> int:
+def delete_old_articles_from_chroma(vectorstore: Chroma, cutoff_date: str) -> int:
     """
     Delete articles older than cutoff_date from ChromaDB.
 
     Args:
         vectorstore: ChromaDB vector store instance
         cutoff_date: ISO format date string (e.g., "2024-10-22")
-                    Articles published before this date will be deleted
 
     Returns:
         Number of documents deleted
     """
     try:
-        # Get all documents with metadata to find those older than cutoff
+        # Get all documents with metadata
         all_docs = vectorstore.get(include=["metadatas"])
 
         # Find IDs of documents older than cutoff_date
@@ -99,7 +92,6 @@ def delete_old_articles_from_chroma(
             if published_date and published_date < cutoff_date:
                 old_doc_ids.append(doc_id)
 
-        # Delete old documents
         if old_doc_ids:
             vectorstore.delete(ids=old_doc_ids)
             logger.info(f"Deleted {len(old_doc_ids)} old documents from ChromaDB")
@@ -162,7 +154,6 @@ def build_chroma_index(
             logger.error(f"Sample IDs from failed batch: {id_batch[:5]}")
             raise
 
-    # Note: ChromaDB 0.4.24+ auto-persists changes, no need to call persist()
     logger.info(f"Added {len(new_documents)} new documents to Chroma DB.")
     return vectorstore
 

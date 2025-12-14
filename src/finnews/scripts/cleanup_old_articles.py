@@ -1,13 +1,10 @@
 """
 Cleanup script to remove articles older than a specified number of days.
 
-This script performs DELETION ONLY - no re-processing of kept articles:
-1. Clean up backups older than 6 months
-2. Create new backup of current data
-3. Delete old articles from the vector database (selective deletion)
-4. Filter raw news articles by date
-5. Filter processed chunks by date (no re-chunking)
-6. Complete (no re-embedding needed)
+This script performs selective deletion of old articles from:
+- Raw news JSONL files
+- Processed chunks
+- ChromaDB vector store
 """
 
 import json
@@ -29,10 +26,8 @@ def parse_date(date_str: str) -> datetime:
         return datetime.min.replace(tzinfo=timezone.utc)
 
     try:
-        # Try parsing ISO format with timezone
         if "+" in date_str or date_str.endswith("Z"):
             return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-        # Try parsing without timezone
         dt = datetime.fromisoformat(date_str)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
@@ -73,13 +68,11 @@ def filter_articles_by_date(input_file: Path, output_file: Path, days_to_keep: i
                 article = json.loads(line)
                 published_date = article.get("published_date")
 
-                # Skip articles without a published_date
                 if not published_date or published_date == "null":
                     continue
 
                 article_date = parse_date(published_date)
 
-                # Keep only articles within the date range
                 if article_date >= cutoff_date:
                     kept_articles.append(article)
             except json.JSONDecodeError as e:
@@ -100,11 +93,11 @@ def filter_articles_by_date(input_file: Path, output_file: Path, days_to_keep: i
 
 def cleanup_old_backups(backup_base_dir: Path, max_age_days: int = 180) -> int:
     """
-    Remove backups older than max_age_days (default: 6 months).
+    Remove backups older than max_age_days.
 
     Args:
         backup_base_dir: Base directory containing dated backup folders
-        max_age_days: Maximum age of backups to keep (default: 180 days = 6 months)
+        max_age_days: Maximum age of backups to keep (default: 180 days)
 
     Returns:
         Number of old backups removed
@@ -125,7 +118,7 @@ def cleanup_old_backups(backup_base_dir: Path, max_age_days: int = 180) -> int:
                     print(f"  [OK] Deleted old backup: {backup_dir.name}")
                     removed_count += 1
             except ValueError:
-                # Skip directories that don't match timestamp format
+                # Skip directories that don't match the expected format
                 continue
 
     return removed_count
@@ -147,7 +140,7 @@ def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
     processed_chunks_path = settings.PROCESSED_CHUNKS_PATH
     chroma_store_path = settings.CHROMA_DIR
 
-    # Clean up old backups (keep only 6 months)
+    # Step 1: Clean up old backups (keep only last 6 months)
     if backup:
         print("\n[1/6] Cleaning up old backups...")
         backup_base_dir = ROOT / "data" / "backups"
@@ -157,7 +150,7 @@ def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
         else:
             print("  [OK] No old backups to remove")
 
-    # Backup existing data if requested
+    # Step 2: Create new backup before cleanup
     if backup:
         print("\n[2/6] Creating backups...")
         backup_dir = ROOT / "data" / "backups" / datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -175,7 +168,7 @@ def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
             shutil.copytree(chroma_store_path, backup_dir / "chroma_store", dirs_exist_ok=True)
             print(f"  [OK] Backed up vector DB to {backup_dir / 'chroma_store'}")
 
-    # Delete old articles from vector database first
+    # Step 3: Delete old articles from vector database
     print("\n[3/6] Deleting old articles from vector database...")
 
     cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
@@ -183,7 +176,6 @@ def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
 
     deleted_count = 0
     if chroma_store_path.exists():
-        # Selectively delete old articles from existing vector store
         embedding_model = get_embedding_model()
         vectorstore = Chroma(
             embedding_function=embedding_model,
@@ -194,7 +186,7 @@ def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
     else:
         print("  [INFO] No existing vector database found")
 
-    # Filter raw articles
+    # Step 4: Filter raw articles by date
     print(f"\n[4/6] Filtering raw articles (keeping last {days_to_keep} days)...")
     temp_file = raw_news_path.parent / "articles_filtered.jsonl"
     kept_count = filter_articles_by_date(raw_news_path, temp_file, days_to_keep)
@@ -204,11 +196,10 @@ def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
         temp_file.unlink(missing_ok=True)
         return
 
-    # Replace original with filtered
     shutil.move(str(temp_file), str(raw_news_path))
     print(f"  [OK] Updated raw news file with {kept_count} recent articles")
 
-    # Filter chunks (no re-chunking needed)
+    # Step 5: Filter processed chunks by date (no re-chunking needed)
     print(f"\n[5/6] Filtering processed chunks (keeping last {days_to_keep} days)...")
 
     kept_chunks = []
@@ -223,11 +214,9 @@ def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
                     metadata = chunk.get("metadata", {})
                     published_date = metadata.get("published_date", "")
 
-                    # Skip chunks without a published_date
                     if not published_date or published_date == "null":
                         continue
 
-                    # Keep chunks from articles within the date range
                     if published_date >= cutoff_date_str:
                         kept_chunks.append(chunk)
                 except json.JSONDecodeError as e:
@@ -241,12 +230,10 @@ def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
                 f.write(json.dumps(chunk, ensure_ascii=False) + "\n")
 
         print(f"  [OK] Kept {len(kept_chunks)} out of {total_chunks} chunks")
-        print(f"  [OK] Removed {total_chunks - len(kept_chunks)} old chunks")
     else:
         print("  [WARNING] No existing chunks file found")
         kept_chunks = []
 
-    # Summary
     print("\n[6/6] Cleanup complete!")
     print("=" * 80)
     print("SUMMARY:")
@@ -256,7 +243,6 @@ def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
     print(f"  - Days of data: {days_to_keep}")
     if backup:
         print(f"  - Backup location: {backup_dir}")
-    print("  - NO RE-CHUNKING or RE-EMBEDDING performed (deletion only)")
     print("=" * 80)
 
 
@@ -264,7 +250,6 @@ def main():
     """CLI entry point."""
     import argparse
 
-    # Setup logging for cleanup script
     setup_logging(component="scripts", level=logging.INFO, console=True)
 
     parser = argparse.ArgumentParser(

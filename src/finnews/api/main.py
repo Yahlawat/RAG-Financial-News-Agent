@@ -1,4 +1,3 @@
-# app.py
 import logging
 from contextlib import asynccontextmanager
 
@@ -13,11 +12,9 @@ from finnews.common.ticker_manager import load_tickers
 from finnews.rag.rag_chain import rag_chat
 from finnews.rag.retriever import load_vectorstore
 
-# Setup logging for API component
 setup_logging(component="api", level=logging.INFO, console=True, unified=True)
 logger = logging.getLogger(__name__)
 
-# Vector stores loaded at startup
 article_store = None
 chat_store = None
 
@@ -25,8 +22,9 @@ chat_store = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown events."""
-    # Startup: Initialize vector stores
     global article_store, chat_store
+
+    # Startup: Initialize vector stores
     logger.info("Initializing vector stores")
     article_store = load_vectorstore(str(settings.CHROMA_DIR))
     chat_store = load_vectorstore(str(settings.CHAT_MEMORY_DIR))
@@ -41,7 +39,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Shutdown: Stop scheduler and cleanup
+    # Shutdown: Stop scheduler
     logger.info("Shutting down scheduler")
     stop_scheduler()
     logger.info("Shutdown complete")
@@ -49,7 +47,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Include scraper endpoints router
 app.include_router(scraper_router)
 
 
@@ -107,16 +104,17 @@ def run(
     reload: bool = False,
     workers: int = 1,
 ):
-    """Run the FastAPI app with uvicorn.
+    """
+    Run the FastAPI app with uvicorn.
 
     Args:
         host: Host to bind to
         port: Port to bind to
         reload: Enable auto-reload for development
-        workers: Number of worker processes (production)
+        workers: Number of worker processes
     """
     uvicorn.run(
-        "finnews.api.main:app",  # String import for reload support
+        "finnews.api.main:app",
         host=host,
         port=port,
         reload=reload,

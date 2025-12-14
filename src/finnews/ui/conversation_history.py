@@ -18,18 +18,14 @@ def _get_conversation_file(user_id: str) -> Path:
 
 
 def load_user_conversations(user_id: str = None) -> list[dict]:
-    """Load all conversations for a user.
+    """
+    Load all conversations for a user.
 
     Args:
         user_id: User ID (defaults to DEFAULT_USER_ID)
 
     Returns:
-        List of conversation dicts, each containing:
-        - conversation_id: str
-        - title: str (auto-generated from first message)
-        - created_at: str (ISO timestamp)
-        - updated_at: str (ISO timestamp)
-        - messages: List[Dict] with role, content, sources
+        List of conversation dictionaries
     """
     if user_id is None:
         user_id = settings.DEFAULT_USER_ID
@@ -49,7 +45,8 @@ def load_user_conversations(user_id: str = None) -> list[dict]:
 
 
 def save_user_conversations(user_id: str = None, conversations: list[dict] = None):
-    """Save all conversations for a user.
+    """
+    Save all conversations for a user.
 
     Args:
         user_id: User ID (defaults to DEFAULT_USER_ID)
@@ -71,11 +68,15 @@ def save_user_conversations(user_id: str = None, conversations: list[dict] = Non
 
 
 def get_conversation(user_id: str = None, conversation_id: str = None) -> dict | None:
-    """Get a specific conversation by ID.
+    """
+    Get a specific conversation by ID.
 
     Args:
         user_id: User ID (defaults to DEFAULT_USER_ID)
         conversation_id: Conversation ID
+
+    Returns:
+        Conversation dict or None if not found
     """
     if user_id is None:
         user_id = settings.DEFAULT_USER_ID
@@ -88,11 +89,15 @@ def get_conversation(user_id: str = None, conversation_id: str = None) -> dict |
 
 
 def create_conversation(user_id: str = None, conversation_id: str = None) -> dict:
-    """Create a new empty conversation.
+    """
+    Create a new empty conversation.
 
     Args:
         user_id: User ID (defaults to DEFAULT_USER_ID)
         conversation_id: Conversation ID
+
+    Returns:
+        Newly created conversation dict
     """
     if user_id is None:
         user_id = settings.DEFAULT_USER_ID
@@ -120,7 +125,8 @@ def add_message(
     content: str = None,
     sources: list[dict] | None = None,
 ):
-    """Add a message to a conversation.
+    """
+    Add a message to a conversation.
 
     Args:
         user_id: User ID (defaults to DEFAULT_USER_ID)
@@ -147,7 +153,6 @@ def add_message(
         conversations = load_user_conversations(user_id)
         conv_index = len(conversations) - 1
 
-    # Add message
     message = {
         "role": role,
         "content": content,
@@ -161,7 +166,6 @@ def add_message(
 
     # Auto-generate title from first user message
     if conversations[conv_index]["title"] == "New Chat" and role == "user":
-        # Use first 50 chars of first message as title
         title = content[:50].strip()
         if len(content) > 50:
             title += "..."
@@ -171,7 +175,8 @@ def add_message(
 
 
 def delete_conversation(user_id: str = None, conversation_id: str = None):
-    """Delete a conversation.
+    """
+    Delete a conversation.
 
     Args:
         user_id: User ID (defaults to DEFAULT_USER_ID)
@@ -186,11 +191,15 @@ def delete_conversation(user_id: str = None, conversation_id: str = None):
 
 
 def get_conversation_messages(user_id: str = None, conversation_id: str = None) -> list[dict]:
-    """Get all messages from a conversation.
+    """
+    Get all messages from a conversation.
 
     Args:
         user_id: User ID (defaults to DEFAULT_USER_ID)
         conversation_id: Conversation ID
+
+    Returns:
+        List of message dicts
     """
     if user_id is None:
         user_id = settings.DEFAULT_USER_ID
