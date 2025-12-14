@@ -1,5 +1,3 @@
-"""Scraper execution runner (direct Scrapy execution, no subprocess)."""
-
 import logging
 
 from scrapy.crawler import CrawlerProcess
@@ -18,14 +16,14 @@ logger = logging.getLogger(__name__)
 
 
 def run_scraper(tickers: list[str]) -> None:
-    """Run the scraper for specified tickers (direct execution, no subprocess).
+    """
+    Run the scraper for specified tickers.
 
     Args:
         tickers: List of stock ticker symbols to scrape
 
     Note:
-        This function blocks until scraping completes. Scrapy runs directly
-        in the same process (no subprocess isolation).
+        This function blocks until scraping completes
     """
     if not tickers:
         logger.warning("No tickers provided, aborting scrape")
@@ -60,11 +58,7 @@ def run_scraper(tickers: list[str]) -> None:
 
 
 def run_spider_with_tickers(tickers: list[str]) -> None:
-    """Deprecated: Use run_scraper() instead.
-
-    Args:
-        tickers: List of stock ticker symbols to scrape
-    """
+    """Deprecated: Use run_scraper() instead."""
     logger.warning("run_spider_with_tickers() is deprecated, use run_scraper()")
     run_scraper(tickers)
 

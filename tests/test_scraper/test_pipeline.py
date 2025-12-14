@@ -16,7 +16,7 @@ class TestSaveNewsJSONLPipeline:
         """Test pipeline initialization."""
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
             with patch("finnews.scraper.pipelines.settings") as mock_settings:
-                mock_settings.raw_news = temp_file.name
+                mock_settings.RAW_NEWS_PATH = temp_file.name
 
                 pipeline = SaveNewsJSONLPipeline()
 
@@ -33,7 +33,7 @@ class TestSaveNewsJSONLPipeline:
             temp_file.flush()
 
             with patch("finnews.scraper.pipelines.settings") as mock_settings:
-                mock_settings.raw_news = temp_file.name
+                mock_settings.RAW_NEWS_PATH = temp_file.name
 
                 pipeline = SaveNewsJSONLPipeline()
 
@@ -49,7 +49,7 @@ class TestSaveNewsJSONLPipeline:
             temp_file.flush()
 
             with patch("finnews.scraper.pipelines.settings") as mock_settings:
-                mock_settings.raw_news = temp_file.name
+                mock_settings.RAW_NEWS_PATH = temp_file.name
 
                 # Should not raise exception
                 pipeline = SaveNewsJSONLPipeline()
@@ -59,7 +59,7 @@ class TestSaveNewsJSONLPipeline:
         """Test processing a new article."""
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
             with patch("finnews.scraper.pipelines.settings") as mock_settings:
-                mock_settings.raw_news = temp_file.name
+                mock_settings.RAW_NEWS_PATH = temp_file.name
 
                 pipeline = SaveNewsJSONLPipeline()
 
@@ -102,7 +102,7 @@ class TestSaveNewsJSONLPipeline:
         """Test processing a duplicate article."""
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
             with patch("finnews.scraper.pipelines.settings") as mock_settings:
-                mock_settings.raw_news = temp_file.name
+                mock_settings.RAW_NEWS_PATH = temp_file.name
 
                 pipeline = SaveNewsJSONLPipeline()
 
@@ -134,7 +134,7 @@ class TestSaveNewsJSONLPipeline:
         """Test processing an item with None URL."""
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
             with patch("finnews.scraper.pipelines.settings") as mock_settings:
-                mock_settings.raw_news = temp_file.name
+                mock_settings.RAW_NEWS_PATH = temp_file.name
 
                 pipeline = SaveNewsJSONLPipeline()
 
@@ -155,7 +155,7 @@ class TestSaveNewsJSONLPipeline:
         """Test processing an item with empty URL."""
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
             with patch("finnews.scraper.pipelines.settings") as mock_settings:
-                mock_settings.raw_news = temp_file.name
+                mock_settings.RAW_NEWS_PATH = temp_file.name
 
                 pipeline = SaveNewsJSONLPipeline()
 
@@ -176,24 +176,35 @@ class TestSaveNewsJSONLPipeline:
         """Test close_spider method."""
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
             with patch("finnews.scraper.pipelines.settings") as mock_settings:
-                mock_settings.raw_news = temp_file.name
+                mock_settings.RAW_NEWS_PATH = temp_file.name
 
                 pipeline = SaveNewsJSONLPipeline()
 
                 # Mock spider
                 spider = MagicMock()
+                spider.logger = MagicMock()
+
+                # Open spider first (to open the file)
+                pipeline.open_spider(spider)
+
+                # File should be open
+                assert pipeline.file is not None
+                assert not pipeline.file.closed
 
                 # Close spider
                 pipeline.close_spider(spider)
 
-                # File should be closed
-                assert pipeline.file.closed
+                # File should be closed and set to None
+                assert pipeline.file is None
+
+                # Should set articles_found on spider
+                assert hasattr(spider, 'articles_found')
 
     def test_process_item_json_serialization(self):
         """Test that items are properly serialized to JSON."""
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
             with patch("finnews.scraper.pipelines.settings") as mock_settings:
-                mock_settings.raw_news = temp_file.name
+                mock_settings.RAW_NEWS_PATH = temp_file.name
 
                 pipeline = SaveNewsJSONLPipeline()
 
@@ -234,7 +245,7 @@ class TestSaveNewsJSONLPipeline:
         """Test pipeline with a large number of items."""
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
             with patch("finnews.scraper.pipelines.settings") as mock_settings:
-                mock_settings.raw_news = temp_file.name
+                mock_settings.RAW_NEWS_PATH = temp_file.name
 
                 pipeline = SaveNewsJSONLPipeline()
 
@@ -269,7 +280,7 @@ class TestSaveNewsJSONLPipeline:
             output_file = Path(temp_dir) / "nonexistent" / "articles.jsonl"
 
             with patch("finnews.scraper.pipelines.settings") as mock_settings:
-                mock_settings.raw_news = str(output_file)
+                mock_settings.RAW_NEWS_PATH = str(output_file)
 
                 # Should not raise exception
                 pipeline = SaveNewsJSONLPipeline()

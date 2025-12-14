@@ -1,5 +1,3 @@
-"""Automated scraping scheduler."""
-
 import logging
 from typing import Optional
 
@@ -14,7 +12,6 @@ from finnews.scraper.runner import run_scraper
 setup_logging(component="scheduler", level=logging.INFO, console=True)
 logger = logging.getLogger(__name__)
 
-# Global scheduler instance
 _scheduler: BackgroundScheduler | None = None
 
 
@@ -72,7 +69,6 @@ def scrape_new_tickers(new_tickers: list[str]) -> None:
     logger.info("Starting on-demand scrape for new tickers: %s", new_tickers)
 
     try:
-        # Run scraper for the new tickers
         run_scraper(new_tickers)
         logger.info("On-demand scrape initiated for %d ticker(s)", len(new_tickers))
 
@@ -92,7 +88,6 @@ def start_scheduler() -> BackgroundScheduler:
 
     _scheduler = BackgroundScheduler(timezone="UTC", daemon=True)
 
-    # Add daily scraping job
     if settings.SCRAPE_SCHEDULE_ENABLED:
         trigger = CronTrigger(
             hour=settings.SCRAPE_SCHEDULE_HOUR,

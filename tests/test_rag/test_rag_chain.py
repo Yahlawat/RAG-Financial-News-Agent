@@ -1,4 +1,4 @@
-"""Critical tests for the RAG chain - the core business logic of the application."""
+"""Tests for the RAG chain."""
 
 import pytest
 from unittest.mock import MagicMock, patch
