@@ -6,7 +6,7 @@ A production-ready Python-based Retrieval-Augmented Generation (RAG) system desi
 
 ## Features
 
-- **Intelligent Web Scraping**: Automated financial news collection from FinViz with 40,000+ articles stored
+- **Intelligent Web Scraping**: Automated financial news collection from FinViz
 - **Simple Ticker Management**: File-based ticker configuration (data/tickers.txt)
 - **Advanced Text Processing**: Smart chunking and cleaning of articles for optimal embeddings
 - **Semantic Search**: Fast, relevant document retrieval using ChromaDB vector database
@@ -14,7 +14,6 @@ A production-ready Python-based Retrieval-Augmented Generation (RAG) system desi
 - **Clean Interface**: Streamlined Streamlit chat interface and FastAPI REST endpoints
 - **Session Management**: Persistent conversation history across sessions
 - **Modular Architecture**: Clean separation of concerns with configurable components
-- **Easy Installation**: Simple pip install with optional dependency groups
 
 ## Sample Conversation
 
