@@ -13,12 +13,13 @@ from finnews.common.paths import ensure_dirs
 from finnews.common.ticker_manager import load_tickers
 from finnews.scraper.runner import run_scraper
 
-setup_logging(component="scraper", level=logging.INFO, console=True)
 logger = logging.getLogger(__name__)
 
 
 def main() -> int:
     """CLI entry point for manual scraping."""
+    setup_logging(component="scraper", level=logging.INFO, console=True)
+
     parser = argparse.ArgumentParser(
         description="Manual scraping for financial news articles"
     )

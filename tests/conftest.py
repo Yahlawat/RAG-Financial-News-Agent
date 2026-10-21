@@ -192,7 +192,7 @@ def mock_settings(temp_dir):
     mock.CHROMA_DIR = temp_dir / "chroma_store"
     mock.CHAT_MEMORY_DIR = temp_dir / "chat_memory"
     mock.PROCESSED_CHUNKS_DIR = temp_dir / "processed_chunks"
-    mock.TICKERS_DIR = temp_dir / "tickers"
+    mock.TICKERS_FILE = temp_dir / "tickers.txt"
     mock.USER_PROFILES_DIR = temp_dir / "user_profiles"
     mock.RAW_NEWS_PATH = temp_dir / "raw_news" / "articles.jsonl"
     mock.PROCESSED_CHUNKS_PATH = temp_dir / "processed_chunks" / "chunked_articles.jsonl"

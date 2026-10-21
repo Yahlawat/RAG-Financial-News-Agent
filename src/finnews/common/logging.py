@@ -48,8 +48,10 @@ def setup_logging(
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
 
-    # Clear existing handlers to avoid duplicates
-    root_logger.handlers.clear()
+    # Remove and close existing handlers to avoid duplicates and leaked file handles
+    for existing in root_logger.handlers[:]:
+        root_logger.removeHandler(existing)
+        existing.close()
 
     handlers = []
     formatter = logging.Formatter(format_string)
@@ -108,8 +110,11 @@ def setup_logging(
         unified_handler.setFormatter(formatter)
         handlers.append(unified_handler)
 
-    # Add all handlers to root logger
+    # Add all handlers to root logger. Set the level on each handler too, since
+    # libraries like Scrapy set their own loggers to DEBUG and records propagate
+    # to these handlers regardless of the root logger's level.
     for handler in handlers:
+        handler.setLevel(level)
         root_logger.addHandler(handler)
 
 

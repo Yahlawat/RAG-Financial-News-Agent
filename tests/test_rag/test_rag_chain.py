@@ -6,6 +6,12 @@ from unittest.mock import MagicMock, patch
 from finnews.rag.rag_chain import format_doc_with_metadata, rag_chat
 
 
+@pytest.fixture(autouse=True)
+def openai_api_key(monkeypatch):
+    """Provide a dummy API key so rag_chat reaches the (mocked) LLM."""
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+
+
 class TestFormatDocWithMetadata:
     """Test document formatting for LLM context."""
 
@@ -105,6 +111,11 @@ class TestRagChat:
         assert len(result["sources"]) == 1
         assert result["sources"][0]["title"] == "Apple Q4 Earnings"
         assert result["sources"][0]["url"] == "https://example.com/apple-earnings"
+
+        # Verify the question is passed to the prompt as plain text
+        prompt_text = mock_llm_instance.invoke.call_args[0][0].to_string()
+        assert "Question: What is the latest news about AAPL?" in prompt_text
+        assert "combined_context" not in prompt_text
 
         # Verify memory was saved
         mock_add_memory.assert_called_once()

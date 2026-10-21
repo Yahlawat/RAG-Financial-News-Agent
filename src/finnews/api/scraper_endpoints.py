@@ -7,6 +7,7 @@ from datetime import datetime
 from fastapi import APIRouter
 from pydantic import BaseModel
 
+from finnews.common.config import settings
 from finnews.scraper.metadata import (
     get_scrape_status,
     get_tickers_metadata,
@@ -73,9 +74,9 @@ def get_scrape_status_endpoint():
             start_time = datetime.fromisoformat(status["started_at"])
             time_elapsed = (datetime.now() - start_time).total_seconds()
 
-            # Auto-reset stuck "running" states (older than 30 minutes)
+            # Auto-reset stuck "running" states (older than SCRAPE_TIMEOUT)
             # This handles cases where the scraper crashed without updating status
-            if status.get("status") == "running" and time_elapsed > 1800:  # 30 minutes
+            if status.get("status") == "running" and time_elapsed > settings.SCRAPE_TIMEOUT:
                 logger.warning(
                     f"Auto-resetting stuck scraping job (running for {int(time_elapsed)}s). "
                     "This likely indicates the scraper crashed."

@@ -28,8 +28,7 @@ class Settings(BaseSettings):
     CHROMA_DIR: Path = ROOT / "data" / "chroma_store"
     CHAT_MEMORY_DIR: Path = ROOT / "data" / "chat_memory"
     PROCESSED_CHUNKS_DIR: Path = ROOT / "data" / "processed_chunks"
-    TICKERS_DIR: Path = ROOT / "data" / "tickers"
-    TICKERS_FILE: Path = ROOT / "data" / "tickers" / "tickers.txt"
+    TICKERS_FILE: Path = ROOT / "data" / "tickers.txt"
 
     # Logging settings
     LOG_DIR: Path = ROOT / "logs"

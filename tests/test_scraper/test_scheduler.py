@@ -7,6 +7,7 @@ import pytest
 from finnews.scraper.scheduler import (
     get_all_unique_tickers,
     run_scheduled_scrape,
+    run_scraper_in_subprocess,
     scrape_new_tickers,
     start_scheduler,
     stop_scheduler,
@@ -48,9 +49,9 @@ class TestGetAllUniqueTickers:
 class TestRunScheduledScrape:
     """Test the scheduled scraping job."""
 
-    @patch("finnews.scraper.scheduler.run_scraper")
+    @patch("finnews.scraper.scheduler.run_pipeline")
     @patch("finnews.scraper.scheduler.get_all_unique_tickers")
-    def test_run_scheduled_scrape_success(self, mock_get_tickers, mock_run_scraper):
+    def test_run_scheduled_scrape_success(self, mock_get_tickers, mock_run_pipeline):
         """Test successful scheduled scrape."""
         # Mock ticker retrieval
         mock_get_tickers.return_value = ["AAPL", "MSFT", "GOOGL"]
@@ -61,12 +62,14 @@ class TestRunScheduledScrape:
         # Should get tickers
         mock_get_tickers.assert_called_once()
 
-        # Should run scraper with all tickers
-        mock_run_scraper.assert_called_once_with(["AAPL", "MSFT", "GOOGL"])
+        # Should run the pipeline for all tickers, scraping in a subprocess
+        mock_run_pipeline.assert_called_once_with(
+            ["AAPL", "MSFT", "GOOGL"], scrape=run_scraper_in_subprocess
+        )
 
-    @patch("finnews.scraper.scheduler.run_scraper")
+    @patch("finnews.scraper.scheduler.run_pipeline")
     @patch("finnews.scraper.scheduler.get_all_unique_tickers")
-    def test_run_scheduled_scrape_no_tickers(self, mock_get_tickers, mock_run_scraper):
+    def test_run_scheduled_scrape_no_tickers(self, mock_get_tickers, mock_run_pipeline):
         """Test scheduled scrape when no tickers exist."""
         # Mock empty ticker list
         mock_get_tickers.return_value = []
@@ -74,65 +77,93 @@ class TestRunScheduledScrape:
         # Run scheduled scrape
         run_scheduled_scrape()
 
-        # Should not run scraper
-        mock_run_scraper.assert_not_called()
+        # Should not run the pipeline
+        mock_run_pipeline.assert_not_called()
 
-    @patch("finnews.scraper.scheduler.run_scraper")
+    @patch("finnews.scraper.scheduler.run_pipeline")
     @patch("finnews.scraper.scheduler.get_all_unique_tickers")
-    def test_run_scheduled_scrape_failure_handling(self, mock_get_tickers, mock_run_scraper):
+    def test_run_scheduled_scrape_failure_handling(self, mock_get_tickers, mock_run_pipeline):
         """Test handling of scraper failures in scheduled job."""
         mock_get_tickers.return_value = ["AAPL"]
 
         # Mock scraper failure
-        mock_run_scraper.side_effect = Exception("Scraper error")
+        mock_run_pipeline.side_effect = Exception("Scraper error")
 
         # Should not raise exception (scheduled job should be resilient)
         run_scheduled_scrape()
 
-        # Scraper should have been called despite error
-        mock_run_scraper.assert_called_once()
+        # Pipeline should have been called despite error
+        mock_run_pipeline.assert_called_once()
+
+
+class TestRunScraperInSubprocess:
+    """Test running the scraper in a child process."""
+
+    @patch("finnews.scraper.scheduler.multiprocessing.get_context")
+    def test_success(self, mock_get_context):
+        """Test that the scraper runs in a spawned process."""
+        process = mock_get_context.return_value.Process.return_value
+        process.exitcode = 0
+
+        run_scraper_in_subprocess(["AAPL"])
+
+        mock_get_context.assert_called_once_with("spawn")
+        process.start.assert_called_once()
+        process.join.assert_called_once()
+
+    @patch("finnews.scraper.scheduler.multiprocessing.get_context")
+    def test_nonzero_exit_raises(self, mock_get_context):
+        """Test that a failed child process raises an error."""
+        mock_get_context.return_value.Process.return_value.exitcode = 1
+
+        with pytest.raises(RuntimeError, match="exited with code 1"):
+            run_scraper_in_subprocess(["AAPL"])
 
 
 class TestScrapeNewTickers:
     """Test on-demand scraping for new tickers."""
 
-    @patch("finnews.scraper.scheduler.run_scraper")
-    def test_scrape_new_tickers_success(self, mock_run_scraper):
+    @patch("finnews.scraper.scheduler.run_pipeline")
+    def test_scrape_new_tickers_success(self, mock_run_pipeline):
         """Test on-demand scraping for new tickers."""
         new_tickers = ["TSLA", "NVDA"]
 
         scrape_new_tickers(new_tickers)
 
-        # Should run scraper
-        mock_run_scraper.assert_called_once_with(["TSLA", "NVDA"])
+        # Should scrape, chunk and embed (without cleanup)
+        mock_run_pipeline.assert_called_once_with(
+            ["TSLA", "NVDA"], scrape=run_scraper_in_subprocess, cleanup=False
+        )
 
-    @patch("finnews.scraper.scheduler.run_scraper")
-    def test_scrape_new_tickers_empty_list(self, mock_run_scraper):
+    @patch("finnews.scraper.scheduler.run_pipeline")
+    def test_scrape_new_tickers_empty_list(self, mock_run_pipeline):
         """Test on-demand scraping with empty ticker list."""
         scrape_new_tickers([])
 
-        # Should not run scraper
-        mock_run_scraper.assert_not_called()
+        # Should not run the pipeline
+        mock_run_pipeline.assert_not_called()
 
-    @patch("finnews.scraper.scheduler.run_scraper")
-    def test_scrape_new_tickers_failure_handling(self, mock_run_scraper):
+    @patch("finnews.scraper.scheduler.run_pipeline")
+    def test_scrape_new_tickers_failure_handling(self, mock_run_pipeline):
         """Test handling of failures in on-demand scraping."""
         # Mock scraper failure
-        mock_run_scraper.side_effect = Exception("Scraper failed")
+        mock_run_pipeline.side_effect = Exception("Scraper failed")
 
         # Should not raise exception (should be resilient)
         scrape_new_tickers(["AAPL"])
 
-        # Scraper should have been called
-        mock_run_scraper.assert_called_once()
+        # Pipeline should have been called
+        mock_run_pipeline.assert_called_once()
 
-    @patch("finnews.scraper.scheduler.run_scraper")
-    def test_scrape_new_tickers_single_ticker(self, mock_run_scraper):
+    @patch("finnews.scraper.scheduler.run_pipeline")
+    def test_scrape_new_tickers_single_ticker(self, mock_run_pipeline):
         """Test on-demand scraping for single ticker."""
         scrape_new_tickers(["AAPL"])
 
-        # Should run scraper with single ticker
-        mock_run_scraper.assert_called_once_with(["AAPL"])
+        # Should run the pipeline with single ticker
+        mock_run_pipeline.assert_called_once_with(
+            ["AAPL"], scrape=run_scraper_in_subprocess, cleanup=False
+        )
 
 
 class TestSchedulerLifecycle:
@@ -221,18 +252,17 @@ class TestSchedulerLifecycle:
         mock_settings.SCRAPE_SCHEDULE_MINUTE = 30
 
         scheduler = start_scheduler()
+        try:
+            # Verify job is scheduled
+            jobs = scheduler.get_jobs()
+            assert len(jobs) == 1
 
-        # Verify job is scheduled
-        jobs = scheduler.get_jobs()
-        assert len(jobs) == 1
-
-        # Verify schedule (job should be configured for 14:30 UTC)
-        job = jobs[0]
-        assert job.trigger.hour == 14  # type: ignore
-        assert job.trigger.minute == 30  # type: ignore
-
-        # Clean up
-        stop_scheduler()
+            # Verify schedule (job should be configured for 14:30 UTC)
+            fields = {f.name: str(f) for f in jobs[0].trigger.fields}
+            assert fields["hour"] == "14"
+            assert fields["minute"] == "30"
+        finally:
+            stop_scheduler()
 
     @patch("finnews.scraper.scheduler.settings")
     def test_scheduler_timezone(self, mock_settings):
@@ -242,22 +272,20 @@ class TestSchedulerLifecycle:
         mock_settings.SCRAPE_SCHEDULE_MINUTE = 0
 
         scheduler = start_scheduler()
-
-        # Verify timezone
-        assert scheduler.timezone.zone == "UTC"  # type: ignore
-
-        # Clean up
-        stop_scheduler()
+        try:
+            assert str(scheduler.timezone) == "UTC"
+        finally:
+            stop_scheduler()
 
 
 class TestSchedulerIntegration:
     """Integration tests for scheduler behavior."""
 
-    @patch("finnews.scraper.scheduler.run_scraper")
+    @patch("finnews.scraper.scheduler.run_pipeline")
     @patch("finnews.scraper.scheduler.get_all_unique_tickers")
     @patch("finnews.scraper.scheduler.settings")
     def test_scheduler_job_execution(
-        self, mock_settings, mock_get_tickers, mock_run_scraper
+        self, mock_settings, mock_get_tickers, mock_run_pipeline
     ):
         """Test that scheduled job can execute."""
         mock_settings.SCRAPE_SCHEDULE_ENABLED = True
@@ -276,7 +304,7 @@ class TestSchedulerIntegration:
 
         # Verify job executed
         mock_get_tickers.assert_called_once()
-        mock_run_scraper.assert_called_once_with(["AAPL", "MSFT"])
+        mock_run_pipeline.assert_called_once_with(["AAPL", "MSFT"], scrape=run_scraper_in_subprocess)
 
         # Clean up
         stop_scheduler()

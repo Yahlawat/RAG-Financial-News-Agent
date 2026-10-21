@@ -1,10 +1,11 @@
 """
 Cleanup script to remove articles older than a specified number of days.
 
-This script performs selective deletion of old articles from:
+This script removes old articles from:
 - Raw news JSONL files
 - Processed chunks
-- ChromaDB vector store
+
+The ChromaDB vector store is synced to the chunks file on the next embedding run.
 """
 
 import json
@@ -13,11 +14,8 @@ import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from langchain_chroma import Chroma
-
 from finnews.common.config import ROOT, settings
 from finnews.common.logging import setup_logging
-from finnews.rag.embedder import delete_old_articles_from_chroma, get_embedding_model
 
 
 def parse_date(date_str: str) -> datetime:
@@ -37,7 +35,17 @@ def parse_date(date_str: str) -> datetime:
         return datetime.min.replace(tzinfo=timezone.utc)
 
 
-def filter_articles_by_date(input_file: Path, output_file: Path, days_to_keep: int = 30) -> int:
+def article_date(article: dict) -> datetime | None:
+    """Date used for retention: the published date, or the scrape time for articles
+    without one (e.g. links to external sites)."""
+    for key in ("published_date", "scraped_at"):
+        value = article.get(key)
+        if value and value != "null":
+            return parse_date(value)
+    return None
+
+
+def filter_articles_by_date(input_file: Path, output_file: Path, days_to_keep: int = 30) -> set[str]:
     """
     Filter articles to keep only those from the last N days.
 
@@ -47,7 +55,7 @@ def filter_articles_by_date(input_file: Path, output_file: Path, days_to_keep: i
         days_to_keep: Number of days to keep (default: 30)
 
     Returns:
-        Number of articles kept
+        URLs of the articles kept
     """
     cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
 
@@ -59,25 +67,20 @@ def filter_articles_by_date(input_file: Path, output_file: Path, days_to_keep: i
 
     if not input_file.exists():
         print(f"Warning: Input file {input_file} does not exist")
-        return 0
+        return set()
 
     with open(input_file, "r", encoding="utf-8") as f:
         for line in f:
             total_articles += 1
             try:
                 article = json.loads(line)
-                published_date = article.get("published_date")
-
-                if not published_date or published_date == "null":
-                    continue
-
-                article_date = parse_date(published_date)
-
-                if article_date >= cutoff_date:
-                    kept_articles.append(article)
             except json.JSONDecodeError as e:
                 print(f"Warning: Skipping invalid JSON line: {e}")
                 continue
+
+            date = article_date(article)
+            if date is not None and date >= cutoff_date:
+                kept_articles.append(article)
 
     # Write filtered articles
     output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -88,7 +91,40 @@ def filter_articles_by_date(input_file: Path, output_file: Path, days_to_keep: i
     print(f"Kept {len(kept_articles)} out of {total_articles} articles")
     print(f"Removed {total_articles - len(kept_articles)} old articles")
 
-    return len(kept_articles)
+    return {article.get("url") for article in kept_articles if article.get("url")}
+
+
+def filter_chunks_by_url(input_file: Path, output_file: Path, kept_urls: set[str]) -> int:
+    """
+    Keep only chunks whose article was kept, so chunks always match the raw articles.
+
+    Args:
+        input_file: Path to processed chunks JSONL file
+        output_file: Path to write filtered chunks
+        kept_urls: URLs of the articles kept
+
+    Returns:
+        Number of chunks kept
+    """
+    kept_chunks = 0
+    total_chunks = 0
+
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(input_file, "r", encoding="utf-8") as f, open(output_file, "w", encoding="utf-8") as out:
+        for line in f:
+            total_chunks += 1
+            try:
+                chunk = json.loads(line)
+            except json.JSONDecodeError as e:
+                print(f"Warning: Skipping invalid JSON line: {e}")
+                continue
+
+            if chunk.get("metadata", {}).get("url") in kept_urls:
+                out.write(json.dumps(chunk, ensure_ascii=False) + "\n")
+                kept_chunks += 1
+
+    print(f"Kept {kept_chunks} out of {total_chunks} chunks")
+    return kept_chunks
 
 
 def cleanup_old_backups(backup_base_dir: Path, max_age_days: int = 180) -> int:
@@ -126,23 +162,25 @@ def cleanup_old_backups(backup_base_dir: Path, max_age_days: int = 180) -> int:
 
 def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
     """
-    Clean up old articles from the database using selective deletion.
+    Remove articles older than days_to_keep from the raw news and chunks files.
+
+    The vector database is not modified here: the next embedding run
+    (finnews-embed or finnews-pipeline) removes documents whose chunks are gone.
 
     Args:
         days_to_keep: Number of days of articles to keep (default: 30)
         backup: Whether to backup existing data before cleanup (default: True)
     """
     print("=" * 80)
-    print("ARTICLE CLEANUP (SELECTIVE DELETION)")
+    print("ARTICLE CLEANUP")
     print("=" * 80)
 
     raw_news_path = settings.RAW_NEWS_PATH
     processed_chunks_path = settings.PROCESSED_CHUNKS_PATH
-    chroma_store_path = settings.CHROMA_DIR
 
     # Step 1: Clean up old backups (keep only last 6 months)
     if backup:
-        print("\n[1/6] Cleaning up old backups...")
+        print("\n[1/5] Cleaning up old backups...")
         backup_base_dir = ROOT / "data" / "backups"
         removed = cleanup_old_backups(backup_base_dir, max_age_days=180)
         if removed > 0:
@@ -150,9 +188,10 @@ def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
         else:
             print("  [OK] No old backups to remove")
 
-    # Step 2: Create new backup before cleanup
+    # Step 2: Create new backup before cleanup. The vector DB isn't backed up:
+    # it is rebuilt from the chunks file by the embedding step.
     if backup:
-        print("\n[2/6] Creating backups...")
+        print("\n[2/5] Creating backups...")
         backup_dir = ROOT / "data" / "backups" / datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_dir.mkdir(parents=True, exist_ok=True)
 
@@ -164,83 +203,38 @@ def cleanup_and_rebuild(days_to_keep: int = 30, backup: bool = True):
             shutil.copy2(processed_chunks_path, backup_dir / processed_chunks_path.name)
             print(f"  [OK] Backed up chunks to {backup_dir / processed_chunks_path.name}")
 
-        if chroma_store_path.exists():
-            shutil.copytree(chroma_store_path, backup_dir / "chroma_store", dirs_exist_ok=True)
-            print(f"  [OK] Backed up vector DB to {backup_dir / 'chroma_store'}")
+    # Step 3: Filter raw articles by date (written to a temp file until all filtering succeeds)
+    print(f"\n[3/5] Filtering raw articles (keeping last {days_to_keep} days)...")
+    temp_raw = raw_news_path.parent / "articles_filtered.jsonl"
+    kept_urls = filter_articles_by_date(raw_news_path, temp_raw, days_to_keep)
 
-    # Step 3: Delete old articles from vector database
-    print("\n[3/6] Deleting old articles from vector database...")
-
-    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
-    cutoff_date_str = cutoff_date.date().isoformat()
-
-    deleted_count = 0
-    if chroma_store_path.exists():
-        embedding_model = get_embedding_model()
-        vectorstore = Chroma(
-            embedding_function=embedding_model,
-            persist_directory=str(chroma_store_path),
-        )
-        deleted_count = delete_old_articles_from_chroma(vectorstore, cutoff_date_str)
-        print(f"  [OK] Deleted {deleted_count} old documents from vector database")
-    else:
-        print("  [INFO] No existing vector database found")
-
-    # Step 4: Filter raw articles by date
-    print(f"\n[4/6] Filtering raw articles (keeping last {days_to_keep} days)...")
-    temp_file = raw_news_path.parent / "articles_filtered.jsonl"
-    kept_count = filter_articles_by_date(raw_news_path, temp_file, days_to_keep)
-
-    if kept_count == 0:
+    if not kept_urls:
         print("  [ERROR] No articles found in date range. Aborting cleanup.")
-        temp_file.unlink(missing_ok=True)
+        temp_raw.unlink(missing_ok=True)
         return
 
-    shutil.move(str(temp_file), str(raw_news_path))
-    print(f"  [OK] Updated raw news file with {kept_count} recent articles")
-
-    # Step 5: Filter processed chunks by date (no re-chunking needed)
-    print(f"\n[5/6] Filtering processed chunks (keeping last {days_to_keep} days)...")
-
-    kept_chunks = []
-    total_chunks = 0
-
+    # Step 4: Keep only chunks of the kept articles
+    print("\n[4/5] Filtering processed chunks...")
+    kept_chunks = 0
+    temp_chunks = processed_chunks_path.parent / "chunked_articles_filtered.jsonl"
     if processed_chunks_path.exists():
-        with open(processed_chunks_path, "r", encoding="utf-8") as f:
-            for line in f:
-                total_chunks += 1
-                try:
-                    chunk = json.loads(line)
-                    metadata = chunk.get("metadata", {})
-                    published_date = metadata.get("published_date", "")
-
-                    if not published_date or published_date == "null":
-                        continue
-
-                    if published_date >= cutoff_date_str:
-                        kept_chunks.append(chunk)
-                except json.JSONDecodeError as e:
-                    print(f"Warning: Skipping invalid JSON line: {e}")
-                    continue
-
-        # Write filtered chunks back
-        processed_chunks_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(processed_chunks_path, "w", encoding="utf-8") as f:
-            for chunk in kept_chunks:
-                f.write(json.dumps(chunk, ensure_ascii=False) + "\n")
-
-        print(f"  [OK] Kept {len(kept_chunks)} out of {total_chunks} chunks")
+        kept_chunks = filter_chunks_by_url(processed_chunks_path, temp_chunks, kept_urls)
     else:
         print("  [WARNING] No existing chunks file found")
-        kept_chunks = []
 
-    print("\n[6/6] Cleanup complete!")
+    shutil.move(str(temp_raw), str(raw_news_path))
+    print(f"  [OK] Updated raw news file with {len(kept_urls)} recent articles")
+    if processed_chunks_path.exists():
+        shutil.move(str(temp_chunks), str(processed_chunks_path))
+        print(f"  [OK] Updated chunks file with {kept_chunks} chunks")
+
+    print("\n[5/5] Cleanup complete!")
     print("=" * 80)
     print("SUMMARY:")
-    print(f"  - Articles kept: {kept_count}")
-    print(f"  - Chunks kept: {len(kept_chunks)}")
-    print(f"  - Old documents deleted from vector DB: {deleted_count}")
+    print(f"  - Articles kept: {len(kept_urls)}")
+    print(f"  - Chunks kept: {kept_chunks}")
     print(f"  - Days of data: {days_to_keep}")
+    print("  - Vector DB: synced on the next embedding run")
     if backup:
         print(f"  - Backup location: {backup_dir}")
     print("=" * 80)
@@ -253,7 +247,7 @@ def main():
     setup_logging(component="scripts", level=logging.INFO, console=True)
 
     parser = argparse.ArgumentParser(
-        description="Clean up old articles using selective deletion (no full rebuild)"
+        description="Remove articles older than the given number of days"
     )
     parser.add_argument(
         "--days", type=int, default=30, help="Number of days of articles to keep (default: 30)"

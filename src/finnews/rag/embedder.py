@@ -1,6 +1,8 @@
+import hashlib
+import json
 import logging
+import math
 import os
-import re
 
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
@@ -9,9 +11,7 @@ from tqdm import tqdm
 
 from finnews.common.config import settings
 from finnews.common.io_utils import read_jsonl
-from finnews.common.logging import setup_logging
 
-setup_logging(component="rag", level=logging.INFO, console=True)
 logger = logging.getLogger(__name__)
 
 
@@ -30,9 +30,20 @@ def get_embedding_model(model_name: str | None = None) -> HuggingFaceEmbeddings:
     return HuggingFaceEmbeddings(model_name=model_name)
 
 
+def chunk_id(content: str, metadata: dict) -> str:
+    """Build a content-based ID for a chunk.
+
+    The ID stays the same however the chunks file is reordered (e.g. after cleanup),
+    and changes whenever the chunk's text or metadata does.
+    """
+    payload = json.dumps({"content": content, "metadata": metadata}, sort_keys=True)
+    return hashlib.sha1(payload.encode("utf-8")).hexdigest()
+
+
 def load_chunks_from_file(file_path: str):
     documents = []
     ids = []
+    seen_ids = set()
 
     for idx, item in enumerate(read_jsonl(file_path)):
         try:
@@ -40,21 +51,22 @@ def load_chunks_from_file(file_path: str):
 
             item_metadata = item.get("metadata", {})
             metadata = {
-                "title": item_metadata.get("title", ""),
-                "url": item_metadata.get("url", ""),
+                "title": item_metadata.get("title") or "",
+                "url": item_metadata.get("url") or "",
                 "relevant_tickers": ", ".join(item_metadata.get("relevant_tickers", []))
                 if isinstance(item_metadata.get("relevant_tickers"), list)
                 else item_metadata.get("relevant_tickers", ""),
-                "published_date": item_metadata.get("published_date", ""),
+                "published_date": item_metadata.get("published_date") or "",
             }
 
             if not chunk:
                 continue
 
-            # Sanitize title for use in document ID (remove special characters)
-            title = metadata.get("title", "")
-            title_clean = re.sub(r'[^a-zA-Z0-9_-]', '_', title)[:80]
-            doc_id = f"{title_clean}_{idx}"
+            # Identical chunks (same text and metadata) are stored once
+            doc_id = chunk_id(chunk, metadata)
+            if doc_id in seen_ids:
+                continue
+            seen_ids.add(doc_id)
 
             documents.append(Document(page_content=chunk, metadata=metadata))
             ids.append(doc_id)
@@ -68,41 +80,6 @@ def load_chunks_from_file(file_path: str):
 def batch(iterable: list, batch_size: int):
     for i in range(0, len(iterable), batch_size):
         yield iterable[i : i + batch_size]
-
-
-def delete_old_articles_from_chroma(vectorstore: Chroma, cutoff_date: str) -> int:
-    """
-    Delete articles older than cutoff_date from ChromaDB.
-
-    Args:
-        vectorstore: ChromaDB vector store instance
-        cutoff_date: ISO format date string (e.g., "2024-10-22")
-
-    Returns:
-        Number of documents deleted
-    """
-    try:
-        # Get all documents with metadata
-        all_docs = vectorstore.get(include=["metadatas"])
-
-        # Find IDs of documents older than cutoff_date
-        old_doc_ids = []
-        for doc_id, metadata in zip(all_docs["ids"], all_docs["metadatas"]):
-            published_date = metadata.get("published_date", "")
-            if published_date and published_date < cutoff_date:
-                old_doc_ids.append(doc_id)
-
-        if old_doc_ids:
-            vectorstore.delete(ids=old_doc_ids)
-            logger.info(f"Deleted {len(old_doc_ids)} old documents from ChromaDB")
-            return len(old_doc_ids)
-        else:
-            logger.info("No old documents found to delete")
-            return 0
-
-    except Exception as e:
-        logger.error(f"Error deleting old articles: {e}")
-        return 0
 
 
 def build_chroma_index(
@@ -123,10 +100,23 @@ def build_chroma_index(
     )
 
     try:
-        existing_ids = set(vectorstore.get()["ids"])
+        existing_ids = set(vectorstore.get(include=[])["ids"])
     except (KeyError, AttributeError, RuntimeError) as e:
         logger.warning(f"Could not load existing IDs: {e}")
         existing_ids = set()
+
+    # Keep the index in sync with the chunks file: drop documents that are no longer
+    # in it (removed by cleanup, or replaced because their text or metadata changed)
+    stale_ids = list(existing_ids - set(ids))
+    if stale_ids and not documents:
+        logger.warning(
+            "Chunks file is empty; keeping %d existing documents instead of deleting them",
+            len(stale_ids),
+        )
+    elif stale_ids:
+        logger.info(f"Removing {len(stale_ids)} documents no longer in the chunks file...")
+        for id_batch in batch(stale_ids, 5000):
+            vectorstore.delete(ids=id_batch)
 
     new_documents = []
     new_ids = []
@@ -143,7 +133,7 @@ def build_chroma_index(
 
     for doc_batch, id_batch in tqdm(
         zip(batch(new_documents, batch_size), batch(new_ids, batch_size)),
-        total=len(new_documents) // batch_size + 1,
+        total=math.ceil(len(new_documents) / batch_size),
         desc="Indexing in batches",
     ):
         try:

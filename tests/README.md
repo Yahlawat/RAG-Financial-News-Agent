@@ -1,61 +1,46 @@
-# Test Suite Guide
+# Tests
 
-## Test Files
+The test suite covers the scraper, the ingestion pipeline, retrieval and answer generation, and the API. Network access, OpenAI, ChromaDB and the embedding model are mocked. The suite therefore runs offline in a few seconds and doesn't need an API key.
 
-### Critical (Must Pass)
-- `test_rag/test_rag_chain.py` - Core Q&A functionality
-- `test_scraper/test_scheduler.py` - Automated scraping
-- `test_api/test_main.py` - API endpoints
+## Setup
 
-### Important
-- `test_scraper/test_runner.py` - Multi-ticker scraping
-- `test_rag/test_chunker.py` - Text processing
-- `test_scraper/test_spider.py` - Scraping & duplicate detection
-- `test_scraper/test_pipeline.py` - Data persistence
-
-### Supporting
-- `test_rag/test_embedder.py` - Embeddings
-- `test_common/test_config.py` - Configuration
-
-## Running Tests
-
-**All tests:**
 ```bash
-pytest tests/
+pip install -e ".[scraper,api,ui,rag,dev]"
 ```
 
-**Critical tests only:**
+## Running the tests
+
 ```bash
-pytest tests/test_rag/test_rag_chain.py \
-       tests/test_scraper/test_scheduler.py \
-       tests/test_api/test_main.py
+pytest                                    # Full suite
+pytest tests/test_rag/                    # One component
+pytest tests/test_rag/test_rag_chain.py   # One file
+pytest tests/test_rag/test_rag_chain.py::TestRagChat::test_rag_chat_basic_question  # One test
+pytest -v -s                              # Verbose, with print and log output
+pytest --cov=finnews --cov-report=html    # Coverage report in htmlcov/
 ```
 
-**By component:**
-```bash
-pytest tests/test_rag/         # RAG system
-pytest tests/test_scraper/     # Scraper
-pytest tests/test_api/         # API
-```
+`pyproject.toml` adds `src/` to the import path and passes `-q` by default.
 
-**With coverage:**
-```bash
-pytest --cov=finnews --cov-report=html tests/
-```
+## Layout
 
-**Specific test:**
-```bash
-pytest tests/test_rag/test_rag_chain.py::TestRagChat -v
-```
+| File | Covers |
+|------|--------|
+| `test_api/test_main.py` | `/health` and `/chat`: request validation, default tickers, error handling. |
+| `test_rag/test_rag_chain.py` | Answer generation: prompt contents, sources, chat memory, a missing API key, LLM failures. |
+| `test_rag/test_chunker.py` | Text cleaning, chunk sizes and chunk metadata. |
+| `test_rag/test_embedder.py` | Loading chunks, content-based IDs, and keeping the index in sync with the chunks file. |
+| `test_scraper/test_spider.py` | Request generation and parsing of Finviz pages. |
+| `test_scraper/test_pipeline.py` | Saving articles and skipping duplicate URLs. |
+| `test_scraper/test_runner.py` | Running the spider and recording the run status. |
+| `test_scraper/test_scheduler.py` | Scheduler start and stop, the daily job, and the scraper subprocess. |
+| `test_scripts/test_run_pipeline.py` | Order of the pipeline steps and failure handling. |
+| `test_scripts/test_cleanup.py` | Date-based retention and filtering of chunks by kept articles. |
+| `test_common/test_config.py` | Settings defaults, environment variables and paths. |
 
-## Troubleshooting
+Shared fixtures, such as sample articles and a temporary data directory, are defined in `conftest.py`.
 
-**Import errors:**
-```bash
-pip install -e .[dev]
-```
+## Writing tests
 
-**Run with debug output:**
-```bash
-pytest tests/test_rag/test_rag_chain.py -v -s
-```
+- **Mock external services.** Patch HTTP requests, OpenAI (`finnews.rag.rag_chain.ChatOpenAI`), ChromaDB and `HuggingFaceEmbeddings` so tests stay fast and offline.
+- **Patch names where they're looked up.** For example, patch `finnews.scraper.scheduler.run_pipeline`, not the function in `finnews.scripts.pipeline`.
+- **Use temporary files for file I/O.** Use pytest's `tmp_path` or `tempfile` instead of the real `data/` directory.

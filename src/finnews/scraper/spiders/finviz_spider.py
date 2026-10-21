@@ -26,10 +26,10 @@ class FinVizSpider(scrapy.Spider):
             )
 
         # Normalize tickers to uppercase and remove duplicates
-        self.tickers = list(set(t.strip().upper() for t in tickers if t.strip()))
+        self.tickers = sorted(set(t.strip().upper() for t in tickers if t.strip()))
         self.logger.info(f"Initialized spider with {len(self.tickers)} tickers: {self.tickers}")
 
-    def start_requests(self):
+    async def start(self):
         """
         Initiate scraping requests for each ticker's Finviz page.
         """
@@ -46,7 +46,7 @@ class FinVizSpider(scrapy.Spider):
         article_blocks = response.css("table.fullview-news-outer tr")
 
         for article in article_blocks:
-            title = article.css("a::text").get()
+            title = (article.css("a::text").get() or "").strip()
             url = article.css("a::attr(href)").get()
 
             if url and url.startswith("/"):

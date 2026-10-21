@@ -4,10 +4,9 @@ from typing import Optional
 
 from langchain_chroma import Chroma
 from langchain_core.prompts import PromptTemplate
-from langchain_core.runnables import RunnablePassthrough
+from langchain_openai import ChatOpenAI
 
 from finnews.common.config import settings
-from finnews.common.logging import setup_logging
 from finnews.rag.retriever import (
     add_chat_memory,
     article_chunk_retriever,
@@ -15,7 +14,6 @@ from finnews.rag.retriever import (
     retrieve_chat_memory,
 )
 
-setup_logging(component="rag", level=logging.INFO, console=True)
 logger = logging.getLogger(__name__)
 
 
@@ -113,23 +111,12 @@ def rag_chat(
     if not api_key:
         raise ValueError("OPENAI_API_KEY is required but not set in config or environment")
 
-    from langchain_openai import ChatOpenAI  # type: ignore
-
     llm = ChatOpenAI(model=settings.LLM_MODEL, temperature=0.0, api_key=api_key)
 
-    chain = (
-        {
-            "combined_context": RunnablePassthrough() | (lambda _: combined_context),
-            "question": RunnablePassthrough(),
-        }
-        | prompt_template
-        | llm
-    )
+    prompt = prompt_template.invoke({"combined_context": combined_context, "question": question})
 
     try:
-        answer_output = chain.invoke(
-            {"combined_context": combined_context, "question": question}
-        ).content.strip()
+        answer_output = llm.invoke(prompt).content.strip()
 
     except Exception as e:
         logger.exception("LLM chain failed: %s", e)

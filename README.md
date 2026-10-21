@@ -1,199 +1,204 @@
-# RAG - Financial News Q&A Agent
+# Financial News Agent
 
-A production-ready Python-based Retrieval-Augmented Generation (RAG) system designed to answer stock-related questions by scraping, processing, and embedding financial news articles. The system combines web scraping (Scrapy), semantic search (ChromaDB), embeddings (HuggingFace), and LLM-powered responses (OpenAI ChatGPT) to provide contextual, up-to-date financial insights.
+A question-answering assistant for financial news. It scrapes recent news from [Finviz](https://finviz.com) for a list of stock tickers, indexes the articles in a vector database, and answers questions with an OpenAI model. Every answer comes with the articles it drew on.
 
-<img src="./docs/Images/project_image.png" width="300" alt="project_logo">
+<img src="./docs/Images/project_image.png" width="300" alt="Financial News Agent logo">
 
 ## Features
 
-- **Intelligent Web Scraping**: Automated financial news collection from FinViz
-- **Simple Ticker Management**: File-based ticker configuration (data/tickers.txt)
-- **Advanced Text Processing**: Smart chunking and cleaning of articles for optimal embeddings
-- **Semantic Search**: Fast, relevant document retrieval using ChromaDB vector database
-- **Context-Aware Responses**: RAG-powered Q&A with conversation memory and ticker filtering
-- **Clean Interface**: Streamlined Streamlit chat interface and FastAPI REST endpoints
-- **Session Management**: Persistent conversation history across sessions
-- **Modular Architecture**: Clean separation of concerns with configurable components
+- **News collection.** Scrapes Finviz news for the tickers in `data/tickers.txt` and skips articles it has already saved.
+- **Semantic search.** Embeds article text with `BAAI/bge-base-en-v1.5`, stores it in ChromaDB, and reranks results by recency and ticker relevance.
+- **Grounded answers.** Answers only from the retrieved articles, using `gpt-4o-mini` by default, and returns their titles, links and dates.
+- **Conversation memory.** Uses earlier messages in the same conversation to answer follow-up questions.
+- **Scheduled updates.** Optionally refreshes the data every day while the API server is running.
+- **Two interfaces.** A Streamlit chat app and a FastAPI REST API.
 
-## Sample Conversation
+## Demo
 
-Below is an example conversation demonstrating the system's capabilities:
+<img src="./docs/Images/usage_screenshot_1.png" width="750" alt="Chat interface answering a question about recent news">
+<img src="./docs/Images/usage_screenshot_2.png" width="750" alt="Answer with linked source articles">
 
-<img src="./docs/Images/usage_screenshot_1.png" width="750" alt="screenshot_1">
-<img src="./docs/Images/usage_screenshot_2.png" width="750" alt="screenshot_2">
+## How it works
 
-## Quick Start
+```mermaid
+flowchart LR
+    T[data/tickers.txt] --> S[Scraper]
+    S --> R[(Raw articles)]
+    R --> C[Chunker]
+    C --> K[(Chunks)]
+    K --> E[Embedder]
+    E --> V[(ChromaDB)]
+    UI[Streamlit UI] --> API[FastAPI /chat]
+    API --> Ret[Retriever and reranker]
+    Ret --> V
+    API --> LLM[OpenAI model]
+```
 
-### 1. Installation
+1. **Scrape.** The Scrapy spider fetches each ticker's Finviz news page. For articles hosted on Finviz, it also downloads the full text and publication date.
+2. **Chunk.** Article bodies are cleaned and split into chunks of about 800 characters, overlapping by 200.
+3. **Embed.** New chunks are embedded and added to ChromaDB. Chunks removed from the chunks file are deleted from the index.
+4. **Answer.** For each question, the 15 most similar chunks are reranked by recency, ticker match and length. The top 5 go into the prompt, together with relevant earlier messages from the conversation.
+
+## Quick start
+
+**Requirements:**
+- Python 3.11 or later
+- An OpenAI API key
+- About 440 MB of disk space for the embedding model, which is downloaded from Hugging Face the first time articles are embedded
+
+### 1. Install
 
 ```bash
-# Clone the repository
 git clone https://github.com/Yahlawat/Financial-News-Agent.git
 cd Financial-News-Agent
 
-# Install the package in editable mode with all dependencies
-pip install -e .[scraper,api,ui,rag]
+python3 -m venv .venv
+source .venv/bin/activate
 
-# Or install specific components only
-pip install -e .[rag]  # Just RAG components
-pip install -e .[api,ui]  # Just the interfaces
+# Quotes are required in zsh
+pip install -e ".[scraper,api,ui,rag]"
 ```
 
-### 2. Environment Setup
+### 2. Configure
 
 ```bash
-# Copy environment template
 cp .env.example .env
-
-# Edit .env and add your OpenAI API key
-OPENAI_API_KEY=your_openai_api_key_here
 ```
 
-### 3. Ticker Management
+Open `.env` and set `OPENAI_API_KEY`. All other settings have defaults; see [Configuration](#configuration).
 
-Create and populate your tickers file:
+### 3. Choose tickers
+
+List one ticker per line in `data/tickers.txt`. Lines starting with `#` are ignored.
 
 ```bash
-# Create the tickers file
-echo -e "AAPL\nMSFT\nGOOGL\nTSLA" > data/tickers.txt
+mkdir -p data
+printf "AAPL\nMSFT\nGOOGL\nTSLA\n" > data/tickers.txt
 ```
 
-The system will automatically scrape news for all tickers in the file daily (2 AM UTC by default).
+### 4. Build the index
 
-**Manual Operations**:
 ```bash
-# Scrape only
-finnews-scrape
-
-# Or scrape specific tickers
-finnews-scrape --tickers AAPL,MSFT,GOOGL
-
-# Run full pipeline (cleanup → scrape → chunk → embed)
 finnews-pipeline
-
-# Or manual step-by-step processing
-finnews-chunk
-finnews-embed
 ```
 
-### 4. Run the Application
+This command removes old articles, scrapes new ones, then chunks and embeds them. The first run takes longer while the embedding model downloads.
 
-#### API Server (FastAPI)
-```bash
-finnews-api
-```
+### 5. Start the app
 
-#### Web Interface (Streamlit)
-```bash
-finnews-ui
-```
-
-### Console Scripts
+Start the API in one terminal and the web interface in another:
 
 ```bash
-finnews-pipeline            # Full pipeline: cleanup → scrape → chunk → embed (recommended)
-finnews-scrape              # Scrape news articles
-finnews-chunk               # Process articles into chunks
-finnews-embed               # Generate embeddings
-finnews-cleanup             # Clean up old articles
-finnews-api                 # Start FastAPI server
-finnews-ui                  # Start Streamlit web interface
+finnews-api   # http://localhost:8000
+finnews-ui    # http://localhost:8501
 ```
 
-📋 **For detailed command options and usage**, see [docs/RUNBOOK.md](docs/RUNBOOK.md)
+Open http://localhost:8501 to chat. The web interface sends questions to the API, so the API must be running.
 
-## Project Architecture
+## Usage
 
-```
-Financial-News-Agent/
-├── src/finnews/           # Main package
-│   ├── api/               # FastAPI REST endpoints
-│   ├── ui/                # Streamlit web interface
-│   ├── rag/               # RAG pipeline components
-│   ├── scraper/           # Scrapy news scraper
-│   ├── scripts/           # CLI utilities
-│   └── common/            # Shared configuration & utilities
-├── data/                  # Data storage
-│   ├── tickers.txt        # Ticker symbols (one per line)
-│   ├── raw_news/          # Scraped articles
-│   ├── processed_chunks/  # Text chunks
-│   ├── chroma_store/      # Vector database
-│   └── chat_memory/       # Conversation history
-├── tests/                 # Test suite
-└── docs/                  # Documentation
-```
+### Commands
 
-📋 **Detailed structure**: See [docs/STRUCTURE.md](docs/STRUCTURE.md)
+| Command | Description |
+|---------|-------------|
+| `finnews-pipeline` | Run the full pipeline: cleanup, scrape, chunk, embed. |
+| `finnews-scrape` | Scrape news only. Use `--tickers AAPL,MSFT` to override `data/tickers.txt`. |
+| `finnews-chunk` | Split scraped articles into chunks. |
+| `finnews-embed` | Add new chunks to the vector database and remove deleted ones. |
+| `finnews-cleanup` | Remove articles older than 30 days. Use `--days N` to change the cutoff. |
+| `finnews-api` | Start the FastAPI server. |
+| `finnews-ui` | Start the Streamlit web interface. |
 
-## Key Components
+If the API is running when you run `finnews-embed` or `finnews-pipeline` from the command line, restart the API afterwards so it picks up the changes.
 
-### Data Pipeline
-- **Automated Scraper**: Scheduled news collection from FinViz with duplicate detection
-  - Daily scraping at 2 AM UTC (configurable)
-  - Scrapes all tickers from data/tickers.txt
-  - Manual scraping available via CLI
-- **Chunker**: Intelligent text segmentation optimized for semantic search
-- **Embedder**: HuggingFace-based vector embeddings using BAAI/bge-base-en-v1.5
+### REST API
 
-### RAG System
-- **Retriever**: Multi-stage document retrieval with ticker filtering and recency scoring
-- **Memory**: Persistent conversation context using ChromaDB
-- **Generator**: OpenAI GPT-4o-mini for structured, context-aware responses
-
-### Interface
-- **Streamlit**: User-friendly web interface with session management
-- **FastAPI**: RESTful API for integration with external applications
-
-### Ticker Management
-
-Manage tickers via `data/tickers.txt` (one per line):
-
-```
-# My portfolio
-AAPL
-MSFT
-GOOGL
-TSLA
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is the latest news on Apple?", "user_id": "default", "conversation_id": "demo"}'
 ```
 
-The system automatically reads this file for scraping operations.
+```json
+{
+  "conversation_id": "demo",
+  "user_id": "default",
+  "question": "What is the latest news on Apple?",
+  "answer": "...",
+  "sources": [
+    {"title": "...", "url": "https://finviz.com/news/...", "published_date": "2026-10-15T09:28:00"}
+  ]
+}
+```
 
-📋 **For scheduler configuration and advanced options**, see [docs/RUNBOOK.md](docs/RUNBOOK.md)
+| Endpoint | Description |
+|----------|-------------|
+| `POST /chat` | Answer a question. Optional fields: `tickers` (defaults to `data/tickers.txt`), `top_k` (articles, default 5) and `chat_k` (earlier messages, default 3). |
+| `GET /health` | Check that the server and vector stores are ready. |
+| `GET /scrape/status` | Show the current or last pipeline run. |
+| `POST /scrape/tickers/metadata` | Show scraping metadata for a list of tickers. |
+
+Interactive API documentation is available at http://localhost:8000/docs.
+
+### Scheduled updates
+
+To refresh the data daily, set `SCRAPE_SCHEDULE_ENABLED=true` in `.env`. While `finnews-api` is running, it then runs the full pipeline every day at 02:00 UTC. You can change the time with `SCRAPE_SCHEDULE_HOUR` and `SCRAPE_SCHEDULE_MINUTE`. New articles become searchable as soon as the run finishes, without restarting the server.
 
 ## Configuration
 
-Key settings in `.env`:
+Settings are read from `.env` or from environment variables with the same names.
 
-| Setting | Environment Variable | Required |
-|---------|---------------------|----------|
-| **OpenAI API Key** | `OPENAI_API_KEY` | Yes |
-| **LLM Model** | `LLM_MODEL` | No (default: `gpt-4o-mini`) |
-| **API Port** | `API_PORT` | No (default: 8000) |
-| **UI Port** | `STREAMLIT_PORT` | No (default: 8501) |
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `OPENAI_API_KEY` | (none) | Required. OpenAI API key. |
+| `LLM_MODEL` | `gpt-4o-mini` | OpenAI model used for answers. |
+| `EMBEDDING_MODEL` | `BAAI/bge-base-en-v1.5` | Hugging Face embedding model. |
+| `API_HOST` / `API_PORT` | `127.0.0.1` / `8000` | API server address. |
+| `STREAMLIT_PORT` | `8501` | Web interface port. |
+| `SCRAPE_SCHEDULE_ENABLED` | `false` | Run the daily pipeline from the API server. |
 
-📋 **For full configuration options**, see [docs/RUNBOOK.md](docs/RUNBOOK.md)
+See [docs/RUNBOOK.md](docs/RUNBOOK.md#configuration) for the full list.
 
-## Advanced Features
+## Project structure
 
-### Session Persistence
-- Conversations automatically resume across sessions
-- User-specific chat history with ChromaDB storage
-- Session reset functionality for fresh conversations
+```
+Financial-News-Agent/
+├── src/finnews/
+│   ├── api/        # FastAPI server
+│   ├── ui/         # Streamlit web interface
+│   ├── rag/        # Chunking, embedding, retrieval and answer generation
+│   ├── scraper/    # Scrapy spider, scheduler and run status
+│   ├── scripts/    # Command-line entry points
+│   └── common/     # Configuration, logging and file utilities
+├── data/           # Tickers, articles, vector databases (created at runtime)
+├── tests/
+└── docs/
+```
 
-### Smart Retrieval
-- Document reranking based on publication date recency
-- Ticker-specific filtering for focused results
-- Conversation context integration for follow-up questions
+## Documentation
 
-### Scalable Architecture
-- Batch processing for large-scale embedding generation
-- Duplicate detection and incremental updates
-- Production-ready FastAPI deployment
+- [docs/RUNBOOK.md](docs/RUNBOOK.md): configuration reference, operations, data retention, logs and troubleshooting
+- [docs/STRUCTURE.md](docs/STRUCTURE.md): architecture, modules, data formats and design decisions
+- [tests/README.md](tests/README.md): test suite layout and how to run it
+
+## Development
+
+```bash
+pip install -e ".[scraper,api,ui,rag,dev]"
+pytest
+```
+
+The tests mock network access, OpenAI and the embedding model, so they run offline without an API key.
+
+## Limitations
+
+- **Headline-only articles aren't searchable.** Only articles hosted on Finviz have their full text scraped. Links to other sites are saved with their headline and source but aren't embedded, so answers can't use them.
+- **Finviz layout changes can break the scraper.** The scraper depends on Finviz's page layout.
+- **Single-user, no authentication.** The app is designed for one user and has no login. The API listens on `127.0.0.1` by default; don't expose it publicly without adding authentication.
+- **Not financial advice.** Answers summarize news coverage and are not investment advice.
 
 ## License
 
-MIT License - see LICENSE file for details.
+Released under the MIT License. See [LICENSE](LICENSE).
 
----
-
-**Built by Yash Ahlawat** | *Showcasing expertise in RAG systems*
+Author: Yash Ahlawat
