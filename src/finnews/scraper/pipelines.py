@@ -1,8 +1,11 @@
 import json
+import logging
 
 from finnews.common.config import settings
 from finnews.common.io_utils import ensure_file_dir
 from finnews.scraper.utils import load_existing_urls
+
+logger = logging.getLogger(__name__)
 
 # Module-level counter for articles scraped in current run
 # Used by runner.py to get article count after scraping completes
@@ -20,7 +23,7 @@ class SaveNewsJSONLPipeline:
         self.file = None
         self.items_scraped = 0  # Simple counter for scraped articles
 
-    def open_spider(self, spider):
+    def open_spider(self):
         """Open the file when spider starts."""
         global _articles_scraped_count
         _articles_scraped_count = 0  # Reset global counter for new scrape run
@@ -28,12 +31,12 @@ class SaveNewsJSONLPipeline:
         self.file = open(self.output_file, "a+", encoding="utf-8")
         self.items_scraped = 0
 
-    def process_item(self, item, spider):
+    def process_item(self, item):
         url = item.get("url")
         # Duplicate check before persisting to storage
         if not url or url in self.seen_urls:
             if url:
-                spider.logger.info(f"Duplicate skipped: {url}")
+                logger.info(f"Duplicate skipped: {url}")
             return None
 
         self.seen_urls.add(url)
@@ -50,12 +53,10 @@ class SaveNewsJSONLPipeline:
 
         return item
 
-    def close_spider(self, spider) -> None:
-        """Close file and update metadata with final article count."""
+    def close_spider(self) -> None:
+        """Close the output file."""
         if self.file:
             self.file.close()
             self.file = None
 
-        # Store final count on spider for runner to access
-        spider.articles_found = self.items_scraped
-        spider.logger.info(f"Scraped {self.items_scraped} new articles")
+        logger.info(f"Scraped {self.items_scraped} new articles")

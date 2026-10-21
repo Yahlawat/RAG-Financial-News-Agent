@@ -3,7 +3,6 @@ import logging
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 
-from finnews.common.logging import setup_logging
 from finnews.scraper.metadata import (
     complete_pipeline,
     complete_scrape,
@@ -11,7 +10,6 @@ from finnews.scraper.metadata import (
     start_scrape,
 )
 
-setup_logging(component="scraper", level=logging.INFO, console=True, unified=True)
 logger = logging.getLogger(__name__)
 
 

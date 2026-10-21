@@ -16,7 +16,7 @@ dependencies = [
 
 [project.optional-dependencies]
 scraper = [
-  "scrapy>=2.12.0",
+  "scrapy>=2.13.0",
 ]
 api = [
   "fastapi>=0.115.0",
@@ -56,9 +56,9 @@ dev = [
 
 [project.scripts]
 finnews-api = "finnews.api.main:run"
-finnews-chunk = "finnews.rag.chunker:main"
+finnews-chunk = "finnews.scripts.chunk:main"
 finnews-cleanup = "finnews.scripts.cleanup_old_articles:main"
-finnews-embed = "finnews.rag.embedder:main"
+finnews-embed = "finnews.scripts.embed:main"
 finnews-pipeline = "finnews.scripts.pipeline:main"
 finnews-scrape = "finnews.scripts.scrape:main"
 finnews-ui = "finnews.ui.app:main"

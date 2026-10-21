@@ -36,3 +36,7 @@ EXTENSIONS = {}
 REQUEST_FINGERPRINTER_IMPLEMENTATION = "2.7"
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 FEED_EXPORT_ENCODING = "utf-8"
+
+# Log through finnews.common.logging's handlers instead of adding Scrapy's own
+# root handler, which would print every line twice
+LOG_INSTALL_ROOT_HANDLER = False

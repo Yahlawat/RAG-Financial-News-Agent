@@ -1,5 +1,4 @@
 import json
-import logging
 import re
 import unicodedata
 
@@ -8,9 +7,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from finnews.common.config import settings
 from finnews.common.io_utils import ensure_file_dir, read_jsonl
-from finnews.common.logging import get_logger, setup_logging
+from finnews.common.logging import get_logger
 
-setup_logging(component="rag", level=logging.INFO, console=True)
 logger = get_logger(__name__)
 
 
@@ -57,10 +55,15 @@ def chunk_articles(articles: list[dict], max_characters=800) -> list[Document]:
         if not body.strip():
             continue
 
+        # Include the ticker the article was scraped for, so ticker matching also
+        # works for articles without ticker badges
+        tickers = [article.get("main_ticker"), *(article.get("relevant_tickers") or [])]
+        title = article.get("title")
+
         metadata = {
-            "title": article.get("title"),
+            "title": title.strip() if title else title,
             "url": article.get("url"),
-            "relevant_tickers": article.get("relevant_tickers", []),
+            "relevant_tickers": list(dict.fromkeys(t for t in tickers if t)),
             "published_date": article.get("published_date"),
         }
 

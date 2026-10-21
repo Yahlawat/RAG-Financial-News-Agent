@@ -1,5 +1,6 @@
 """Tests for the FinViz spider."""
 
+import asyncio
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -38,10 +39,14 @@ class TestFinVizSpider:
         spider = FinVizSpider(tickers=["AAPL"])
         assert spider.tickers == ["AAPL"]
 
-    def test_start_requests(self):
-        """Test start_requests method."""
-        spider = FinVizSpider(tickers=["AAPL", "MSFT"])
-        requests = list(spider.start_requests())
+    def test_start(self):
+        """Test start method."""
+        spider = FinVizSpider(tickers=["MSFT", "AAPL"])
+
+        async def collect():
+            return [request async for request in spider.start()]
+
+        requests = asyncio.run(collect())
 
         assert len(requests) == 2
         assert requests[0].url == "https://finviz.com/quote.ashx?t=AAPL&p=d"

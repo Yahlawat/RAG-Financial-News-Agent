@@ -31,7 +31,7 @@ class TestSettings:
         assert isinstance(settings.CHROMA_DIR, Path)
         assert isinstance(settings.CHAT_MEMORY_DIR, Path)
         assert isinstance(settings.PROCESSED_CHUNKS_DIR, Path)
-        assert isinstance(settings.TICKERS_DIR, Path)
+        assert isinstance(settings.TICKERS_FILE, Path)
 
     def test_environment_variable_loading(self):
         """Test that environment variables are loaded correctly."""
@@ -58,7 +58,7 @@ class TestSettings:
         assert settings.PROCESSED_CHUNKS_PATH.name == "chunked_articles.jsonl"
         assert settings.RAW_NEWS_PATH.name == "articles.jsonl"
         assert settings.CHAT_SESSIONS_FILE.name == "chat_sessions.json"
-        assert (settings.TICKERS_DIR / "tickers.csv").name == "tickers.csv"
+        assert settings.TICKERS_FILE.name == "tickers.txt"
 
     def test_invalid_api_port(self):
         """Test validation of invalid API port."""
@@ -81,7 +81,7 @@ class TestSettings:
         assert settings.CHROMA_DIR.is_relative_to(root)
         assert settings.CHAT_MEMORY_DIR.is_relative_to(root)
         assert settings.PROCESSED_CHUNKS_DIR.is_relative_to(root)
-        assert settings.TICKERS_DIR.is_relative_to(root)
+        assert settings.TICKERS_FILE.is_relative_to(root)
         assert settings.RAW_NEWS_PATH.is_relative_to(root)
         assert settings.PROCESSED_CHUNKS_PATH.is_relative_to(root)
         assert settings.CHAT_SESSIONS_FILE.is_relative_to(root)

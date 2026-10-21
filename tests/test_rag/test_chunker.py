@@ -94,6 +94,30 @@ class TestChunkArticles:
             assert chunk.metadata["published_date"] == "2024-01-01"
             assert chunk.metadata["relevant_tickers"] == ["AAPL"]
 
+    def test_chunk_articles_includes_main_ticker(self):
+        """Test that the scraped-for ticker is included in relevant_tickers."""
+        articles = [
+            {
+                "title": "Test Article",
+                "url": "https://example.com/test",
+                "body": "This is a test article body.",
+                "main_ticker": "AAPL",
+                "relevant_tickers": ["MSFT", "AAPL"],
+            },
+            {
+                "title": "No Badges",
+                "url": "https://example.com/no-badges",
+                "body": "This is another test article body.",
+                "main_ticker": "TSLA",
+                "relevant_tickers": [],
+            },
+        ]
+
+        chunks = chunk_articles(articles)
+
+        assert chunks[0].metadata["relevant_tickers"] == ["AAPL", "MSFT"]
+        assert chunks[-1].metadata["relevant_tickers"] == ["TSLA"]
+
     def test_chunk_articles_respects_max_characters(self):
         """Test that chunks don't exceed max_characters."""
         articles = [

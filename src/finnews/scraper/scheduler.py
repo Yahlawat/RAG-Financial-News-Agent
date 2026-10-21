@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 from typing import Optional
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -8,8 +9,8 @@ from finnews.common.config import settings
 from finnews.common.logging import setup_logging
 from finnews.scraper.metadata import is_scrape_running
 from finnews.scraper.runner import run_scraper
+from finnews.scripts.pipeline import run_pipeline
 
-setup_logging(component="scheduler", level=logging.INFO, console=True)
 logger = logging.getLogger(__name__)
 
 _scheduler: BackgroundScheduler | None = None
@@ -28,8 +29,34 @@ def get_all_unique_tickers() -> list[str]:
         return []
 
 
+def _scraper_process_main(tickers: list[str]) -> None:
+    """Entry point of the scraper child process."""
+    setup_logging(component="scraper", level=logging.INFO, console=True)
+    run_scraper(tickers)
+
+
+def run_scraper_in_subprocess(tickers: list[str]) -> None:
+    """Run the scraper in a fresh process.
+
+    Scrapy's Twisted reactor must run in the main thread and cannot be restarted,
+    so it can't run directly in the scheduler's worker thread.
+    """
+    process = multiprocessing.get_context("spawn").Process(
+        target=_scraper_process_main, args=(tickers,)
+    )
+    process.start()
+    process.join()
+    if process.exitcode != 0:
+        raise RuntimeError(f"Scraper process exited with code {process.exitcode}")
+
+
 def run_scheduled_scrape() -> None:
-    """Main scheduled scraping job."""
+    """Main scheduled job: cleanup, scrape, chunk and embed.
+
+    Only scraping runs in a child process. Chunking and embedding run here, so the
+    vector store updates go through this process's Chroma client and are visible
+    to the API immediately.
+    """
     logger.info("Starting scheduled scraping job")
 
     # Prevent concurrent scrapes
@@ -46,8 +73,7 @@ def run_scheduled_scrape() -> None:
 
         logger.info("Scheduled scrape starting for %d tickers: %s", len(tickers), tickers)
 
-        # Run the scraper
-        run_scraper(tickers)
+        run_pipeline(tickers, scrape=run_scraper_in_subprocess)
 
         logger.info("Scheduled scrape completed successfully")
 
@@ -56,7 +82,7 @@ def run_scheduled_scrape() -> None:
 
 
 def scrape_new_tickers(new_tickers: list[str]) -> None:
-    """On-demand scraping for newly added tickers."""
+    """On-demand scrape, chunk and embed for newly added tickers."""
     if not new_tickers:
         logger.warning("No tickers provided for on-demand scraping")
         return
@@ -69,8 +95,8 @@ def scrape_new_tickers(new_tickers: list[str]) -> None:
     logger.info("Starting on-demand scrape for new tickers: %s", new_tickers)
 
     try:
-        run_scraper(new_tickers)
-        logger.info("On-demand scrape initiated for %d ticker(s)", len(new_tickers))
+        run_pipeline(new_tickers, scrape=run_scraper_in_subprocess, cleanup=False)
+        logger.info("On-demand scrape completed for %d ticker(s)", len(new_tickers))
 
     except Exception as e:
         logger.exception("On-demand scrape failed: %s", e)

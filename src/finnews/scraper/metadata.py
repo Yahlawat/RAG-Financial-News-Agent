@@ -56,6 +56,7 @@ def start_scrape(tickers: list[str]) -> None:
         data = _read_metadata()
         data["current_scrape"] = {
             "status": "running",
+            "pipeline_stage": "scraping",
             "started_at": datetime.now().isoformat(),
             "progress": {
                 "completed": 0,
@@ -89,16 +90,16 @@ def reset_scrape_status() -> None:
         logger.info("Reset scraping status to idle")
 
 
-def start_chunking(total_articles: int = 0) -> None:
-    """Mark post-processing stage as started."""
+def set_pipeline_stage(stage: str) -> None:
+    """Mark a post-scrape pipeline stage (e.g. "chunking", "embedding") as running."""
     with _metadata_lock:
         data = _read_metadata()
         scrape = data.get("current_scrape", {})
         scrape["status"] = "running"
-        scrape["pipeline_stage"] = "processing"
+        scrape["pipeline_stage"] = stage
         data["current_scrape"] = scrape
         _write_metadata(data)
-        logger.info(f"Started post-processing {total_articles} articles")
+        logger.info(f"Pipeline stage: {stage}")
 
 
 def complete_pipeline(status: str = "completed") -> None:
@@ -157,6 +158,24 @@ def update_ticker_scrape(ticker: str, articles_count: int = 0) -> None:
 
 
 def is_scrape_running() -> bool:
-    """Check if a scrape is currently running."""
+    """Check if a scrape is currently running.
+
+    A "running" status older than SCRAPE_TIMEOUT is treated as stale (the process
+    most likely crashed) and reset, so it can't block future scrapes indefinitely.
+    """
     status = get_scrape_status()
-    return status.get("status") == "running"
+    if status.get("status") != "running":
+        return False
+
+    try:
+        started_at = datetime.fromisoformat(status["started_at"])
+    except (KeyError, TypeError, ValueError):
+        return True
+
+    elapsed = (datetime.now() - started_at).total_seconds()
+    if elapsed > settings.SCRAPE_TIMEOUT:
+        logger.warning(f"Resetting stale scrape status (running for {int(elapsed)}s)")
+        reset_scrape_status()
+        return False
+
+    return True

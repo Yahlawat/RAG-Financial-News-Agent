@@ -47,7 +47,7 @@ data/processed_chunks/
 data/chroma_store/
 data/chat_memory/
 data/chat_sessions/
-data/tickers/
+data/tickers.txt
 data/backups/
 data/*.json
 data/user_profiles/*.json

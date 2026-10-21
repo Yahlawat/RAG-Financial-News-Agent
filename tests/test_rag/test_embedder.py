@@ -111,6 +111,47 @@ class TestLoadChunksFromFile:
             assert documents[0].metadata.get("relevant_tickers", "") == ""
             assert documents[0].metadata.get("published_date", "") == ""
 
+    def test_load_chunks_from_file_null_metadata(self):
+        """Test that null metadata values become empty strings (Chroma rejects None)."""
+        test_data = [
+            {
+                "content": "Test content",
+                "metadata": {"title": None, "url": None, "published_date": None},
+            }
+        ]
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
+            for item in test_data:
+                temp_file.write(json.dumps(item) + "\n")
+            temp_file.flush()
+
+            documents, ids = load_chunks_from_file(temp_file.name)
+
+        assert len(documents) == 1
+        assert documents[0].metadata["title"] == ""
+        assert documents[0].metadata["url"] == ""
+        assert documents[0].metadata["published_date"] == ""
+        assert len(ids) == 1
+
+    def test_load_chunks_from_file_ids_stable_across_reordering(self):
+        """Test that chunk IDs don't depend on line position, and duplicates are dropped."""
+        chunk_a = {"content": "Chunk A", "metadata": {"title": "Same Title", "url": "https://example.com/a"}}
+        chunk_b = {"content": "Chunk B", "metadata": {"title": "Same Title", "url": "https://example.com/b"}}
+
+        def load(items):
+            with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
+                for item in items:
+                    temp_file.write(json.dumps(item) + "\n")
+                temp_file.flush()
+                return load_chunks_from_file(temp_file.name)
+
+        _, ids_ab = load([chunk_a, chunk_b])
+        _, ids_ba = load([chunk_b, chunk_a, chunk_b])
+
+        # Same-titled articles get distinct IDs; order doesn't matter; duplicates dropped
+        assert len(set(ids_ab)) == 2
+        assert ids_ba == [ids_ab[1], ids_ab[0]]
+
     def test_load_chunks_from_file_invalid_json(self):
         """Test loading chunks with invalid JSON lines."""
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
@@ -214,9 +255,8 @@ class TestBuildChromaIndex:
         # Mock the embedding model
         mock_embeddings.return_value = MagicMock()
 
-        # Mock the Chroma vectorstore with existing documents
+        # Mock the Chroma vectorstore (existing IDs are set once the file is written)
         mock_vectorstore = MagicMock()
-        mock_vectorstore.get.return_value = {"ids": ["existing_id"]}
         mock_chroma.return_value = mock_vectorstore
 
         # Create test data
@@ -229,6 +269,9 @@ class TestBuildChromaIndex:
                 temp_file.write(json.dumps(item) + "\n")
             temp_file.flush()
 
+            _, existing_ids = load_chunks_from_file(temp_file.name)
+            mock_vectorstore.get.return_value = {"ids": existing_ids}
+
             with tempfile.TemporaryDirectory() as temp_dir:
                 result = build_chroma_index(
                     input_file=temp_file.name,
@@ -237,8 +280,58 @@ class TestBuildChromaIndex:
                     batch_size=1,
                 )
 
-                # Should not add documents if they already exist
+                # Should not add or delete documents if they already exist
                 assert not mock_vectorstore.add_documents.called
+                assert not mock_vectorstore.delete.called
+
+    @patch("finnews.rag.embedder.HuggingFaceEmbeddings")
+    @patch("finnews.rag.embedder.Chroma")
+    def test_build_chroma_index_removes_stale_documents(self, mock_chroma, mock_embeddings):
+        """Test that documents no longer in the chunks file are deleted from the index."""
+        mock_embeddings.return_value = MagicMock()
+        mock_vectorstore = MagicMock()
+        mock_chroma.return_value = mock_vectorstore
+
+        test_data = [
+            {"content": "Test content", "metadata": {"title": "Test", "url": "https://example.com"}}
+        ]
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
+            for item in test_data:
+                temp_file.write(json.dumps(item) + "\n")
+            temp_file.flush()
+
+            _, current_ids = load_chunks_from_file(temp_file.name)
+            mock_vectorstore.get.return_value = {"ids": current_ids + ["stale_id"]}
+
+            with tempfile.TemporaryDirectory() as temp_dir:
+                build_chroma_index(
+                    input_file=temp_file.name,
+                    output_path=temp_dir,
+                    model_name="test-model",
+                )
+
+        mock_vectorstore.delete.assert_called_once_with(ids=["stale_id"])
+        assert not mock_vectorstore.add_documents.called
+
+    @patch("finnews.rag.embedder.HuggingFaceEmbeddings")
+    @patch("finnews.rag.embedder.Chroma")
+    def test_build_chroma_index_empty_file_keeps_documents(self, mock_chroma, mock_embeddings):
+        """Test that an empty chunks file doesn't wipe the existing index."""
+        mock_embeddings.return_value = MagicMock()
+        mock_vectorstore = MagicMock()
+        mock_vectorstore.get.return_value = {"ids": ["existing_id"]}
+        mock_chroma.return_value = mock_vectorstore
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jsonl") as temp_file:
+            with tempfile.TemporaryDirectory() as temp_dir:
+                build_chroma_index(
+                    input_file=temp_file.name,
+                    output_path=temp_dir,
+                    model_name="test-model",
+                )
+
+        assert not mock_vectorstore.delete.called
 
     @patch("finnews.rag.embedder.HuggingFaceEmbeddings")
     @patch("finnews.rag.embedder.Chroma")
@@ -249,7 +342,7 @@ class TestBuildChromaIndex:
 
         # Mock the Chroma vectorstore to raise exception
         mock_vectorstore = MagicMock()
-        mock_vectorstore.get.side_effect = Exception("Chroma error")
+        mock_vectorstore.get.side_effect = RuntimeError("Chroma error")
         mock_chroma.return_value = mock_vectorstore
 
         # Create test data

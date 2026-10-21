@@ -108,7 +108,7 @@ class TestChatEndpoint:
     @patch("finnews.api.main.article_store", MagicMock())
     @patch("finnews.api.main.chat_store", MagicMock())
     @patch("finnews.api.main.rag_chat")
-    @patch("finnews.api.main.get_portfolio_tickers")
+    @patch("finnews.api.main.load_tickers")
     def test_chat_endpoint_success(self, mock_get_tickers, mock_rag_chat):
         """Test successful chat request."""
         # Mock portfolio tickers
@@ -149,7 +149,7 @@ class TestChatEndpoint:
     @patch("finnews.api.main.article_store", MagicMock())
     @patch("finnews.api.main.chat_store", MagicMock())
     @patch("finnews.api.main.rag_chat")
-    @patch("finnews.api.main.get_portfolio_tickers")
+    @patch("finnews.api.main.load_tickers")
     def test_chat_endpoint_with_explicit_tickers(self, mock_get_tickers, mock_rag_chat):
         """Test chat with explicit ticker filter."""
         mock_rag_chat.return_value = {
@@ -183,7 +183,7 @@ class TestChatEndpoint:
     @patch("finnews.api.main.article_store", MagicMock())
     @patch("finnews.api.main.chat_store", MagicMock())
     @patch("finnews.api.main.rag_chat")
-    @patch("finnews.api.main.get_portfolio_tickers")
+    @patch("finnews.api.main.load_tickers")
     def test_chat_endpoint_auto_load_portfolio(self, mock_get_tickers, mock_rag_chat):
         """Test that portfolio tickers are auto-loaded when not provided."""
         mock_get_tickers.return_value = ["AAPL", "MSFT"]
@@ -209,8 +209,8 @@ class TestChatEndpoint:
 
         assert response.status_code == 200
 
-        # Should load portfolio tickers
-        mock_get_tickers.assert_called_once_with("test_user")
+        # Should load tickers from tickers.txt
+        mock_get_tickers.assert_called_once_with()
 
         # Should pass portfolio tickers to RAG
         call_args = mock_rag_chat.call_args[1]
@@ -257,7 +257,7 @@ class TestChatEndpoint:
     @patch("finnews.api.main.article_store", MagicMock())
     @patch("finnews.api.main.chat_store", MagicMock())
     @patch("finnews.api.main.rag_chat")
-    @patch("finnews.api.main.get_portfolio_tickers")
+    @patch("finnews.api.main.load_tickers")
     def test_chat_endpoint_custom_parameters(self, mock_get_tickers, mock_rag_chat):
         """Test chat with custom top_k and chat_k parameters."""
         mock_get_tickers.return_value = []
@@ -292,7 +292,7 @@ class TestChatEndpoint:
     @patch("finnews.api.main.article_store", MagicMock())
     @patch("finnews.api.main.chat_store", MagicMock())
     @patch("finnews.api.main.rag_chat")
-    @patch("finnews.api.main.get_portfolio_tickers")
+    @patch("finnews.api.main.load_tickers")
     def test_chat_endpoint_empty_portfolio(self, mock_get_tickers, mock_rag_chat):
         """Test chat when user has no portfolio tickers."""
         # User has no tickers

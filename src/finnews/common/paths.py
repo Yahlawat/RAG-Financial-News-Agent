@@ -9,7 +9,7 @@ def ensure_dirs() -> None:
         settings.CHAT_MEMORY_DIR,
         settings.PROCESSED_CHUNKS_DIR,
         settings.RAW_NEWS_PATH.parent,
-        settings.TICKERS_DIR,
+        settings.TICKERS_FILE.parent,
         settings.CHAT_SESSIONS_FILE.parent,
         settings.LOG_DIR,
     ]:

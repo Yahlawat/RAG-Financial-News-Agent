@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import tempfile
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -96,8 +97,13 @@ def write_json(file_path: str, data: dict[str, Any], indent: int = 2) -> None:
         indent: JSON indentation (default: 2)
     """
     ensure_file_dir(file_path)
+    # Write to a temp file and swap it in, so readers (possibly in another process)
+    # never see a partially written file
+    fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(file_path) or ".", suffix=".tmp")
     try:
-        with open(file_path, "w", encoding="utf-8") as f:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=indent, ensure_ascii=False)
+        os.replace(tmp_path, file_path)
     except IOError as e:
         logger.warning(f"Error writing JSON to {file_path}: {e}")
+        Path(tmp_path).unlink(missing_ok=True)

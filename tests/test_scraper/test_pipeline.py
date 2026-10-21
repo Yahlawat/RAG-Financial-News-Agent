@@ -3,7 +3,7 @@
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from finnews.scraper.items import NewsArticleItem
 from finnews.scraper.pipelines import SaveNewsJSONLPipeline
@@ -63,12 +63,8 @@ class TestSaveNewsJSONLPipeline:
 
                 pipeline = SaveNewsJSONLPipeline()
 
-                # Mock spider
-                spider = MagicMock()
-                spider.logger = MagicMock()
-
                 # Open the file (simulate spider start)
-                pipeline.open_spider(spider)
+                pipeline.open_spider()
 
                 # Create test item
                 item = NewsArticleItem(
@@ -83,7 +79,7 @@ class TestSaveNewsJSONLPipeline:
                 )
 
                 # Process item
-                result = pipeline.process_item(item, spider)
+                result = pipeline.process_item(item)
 
                 # Should return the item
                 assert result == item
@@ -116,19 +112,16 @@ class TestSaveNewsJSONLPipeline:
                     source="Test Source",
                 )
 
-                # Mock spider
-                spider = MagicMock()
-                spider.logger = MagicMock()
-
                 # Process item
-                result = pipeline.process_item(item, spider)
+                with patch("finnews.scraper.pipelines.logger") as mock_logger:
+                    result = pipeline.process_item(item)
 
                 # Should return None (duplicate)
                 assert result is None
 
                 # Should log the duplicate
-                spider.logger.info.assert_called_once()
-                assert "Duplicate skipped" in spider.logger.info.call_args[0][0]
+                mock_logger.info.assert_called_once()
+                assert "Duplicate skipped" in mock_logger.info.call_args[0][0]
 
     def test_process_item_with_none_url(self):
         """Test processing an item with None URL."""
@@ -141,12 +134,8 @@ class TestSaveNewsJSONLPipeline:
                 # Create test item with None URL
                 item = NewsArticleItem(title="Test Article", url=None, source="Test Source")
 
-                # Mock spider
-                spider = MagicMock()
-                spider.logger = MagicMock()
-
                 # Process item
-                result = pipeline.process_item(item, spider)
+                result = pipeline.process_item(item)
 
                 # Should return None (no URL)
                 assert result is None
@@ -162,12 +151,8 @@ class TestSaveNewsJSONLPipeline:
                 # Create test item with empty URL
                 item = NewsArticleItem(title="Test Article", url="", source="Test Source")
 
-                # Mock spider
-                spider = MagicMock()
-                spider.logger = MagicMock()
-
                 # Process item
-                result = pipeline.process_item(item, spider)
+                result = pipeline.process_item(item)
 
                 # Should return None (empty URL)
                 assert result is None
@@ -180,25 +165,18 @@ class TestSaveNewsJSONLPipeline:
 
                 pipeline = SaveNewsJSONLPipeline()
 
-                # Mock spider
-                spider = MagicMock()
-                spider.logger = MagicMock()
-
                 # Open spider first (to open the file)
-                pipeline.open_spider(spider)
+                pipeline.open_spider()
 
                 # File should be open
                 assert pipeline.file is not None
                 assert not pipeline.file.closed
 
                 # Close spider
-                pipeline.close_spider(spider)
+                pipeline.close_spider()
 
                 # File should be closed and set to None
                 assert pipeline.file is None
-
-                # Should set articles_found on spider
-                assert hasattr(spider, 'articles_found')
 
     def test_process_item_json_serialization(self):
         """Test that items are properly serialized to JSON."""
@@ -220,12 +198,8 @@ class TestSaveNewsJSONLPipeline:
                     scraped_at="2024-01-01T00:00:00",
                 )
 
-                # Mock spider
-                spider = MagicMock()
-                spider.logger = MagicMock()
-
                 # Process item
-                pipeline.process_item(item, spider)
+                pipeline.process_item(item)
 
                 # Flush and read the written data
                 pipeline.file.flush()
@@ -249,10 +223,6 @@ class TestSaveNewsJSONLPipeline:
 
                 pipeline = SaveNewsJSONLPipeline()
 
-                # Mock spider
-                spider = MagicMock()
-                spider.logger = MagicMock()
-
                 # Process many items
                 for i in range(100):
                     item = NewsArticleItem(
@@ -261,7 +231,7 @@ class TestSaveNewsJSONLPipeline:
                         source="Test Source",
                     )
 
-                    result = pipeline.process_item(item, spider)
+                    result = pipeline.process_item(item)
                     assert result == item
 
                 # All URLs should be in seen_urls
